@@ -26,6 +26,7 @@ func main() {
 	}
 	log.Printf("Forwarding Proxy is: %q\n", proxyServer)
 
+	setGoProxyCA()
 	proxy := goproxy.NewProxyHttpServer()
 	proxy.Verbose = true
 
