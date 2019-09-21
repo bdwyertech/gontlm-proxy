@@ -1,4 +1,4 @@
-package gontlm
+package main
 
 import (
 	"crypto/tls"
