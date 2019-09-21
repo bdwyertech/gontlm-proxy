@@ -16,10 +16,11 @@ func setGoProxyCA() error {
 		log.Fatal(err)
 	}
 
-	cert := path.Clean(path.Join(usr.HomeDir, "proxy-ca.pem"))
+	cert := getEnv("GONTLM_CA", path.Clean(path.Join(usr.HomeDir, ".gontlm-ca.pem")))
 	if _, err := os.Stat(cert); os.IsNotExist(err) {
-		log.Printf("Proxy CA does not exist: %s", cert)
-		return err
+		log.Printf("GoNTLM-Proxy CA does not exist.. Creating: %s", cert)
+		createCertificate(cert)
+		// return err
 	}
 
 	goproxyCa, err := tls.LoadX509KeyPair(cert, cert)
