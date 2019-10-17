@@ -4,7 +4,6 @@ import (
 	"github.com/bhendo/concord"
 	"github.com/bhendo/concord/handshakers"
 	"github.com/elazarl/goproxy"
-	"golang.org/x/sys/windows/registry"
 	"log"
 	"net/http"
 	"net/url"
@@ -12,18 +11,7 @@ import (
 )
 
 func main() {
-	// Pull Proxy from the Registry
-	k, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.QUERY_VALUE)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer k.Close()
-
-	// proxyServer := os.Args[1]
-	proxyServer, _, err := k.GetStringValue("ProxyServer")
-	if err != nil {
-		log.Fatal(err)
-	}
+	proxyServer := getProxyServer()
 	log.Printf("Forwarding Proxy is: %q\n", proxyServer)
 	proxyUrl, err := url.Parse("http://" + proxyServer)
 	if err != nil {
