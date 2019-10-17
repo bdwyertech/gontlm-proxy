@@ -32,6 +32,19 @@ func setGoProxyCA() error {
 		return err
 	}
 
+	// Validate CA Certificate
+	_, err = goproxyCa.Leaf.Verify(x509.VerifyOptions{})
+	if err != nil {
+		switch err.(type) {
+		case x509.UnknownAuthorityError:
+			log.Println("WARN: GoNTLM-Proxy certificate is not trusted... You should add it to your trusted CA store!")
+			log.Printf("WARN: GoNTLM-Proxy CA Cert Location: %s", cert)
+			log.Printf("WARN: %s", err)
+		default:
+			log.Fatal(err)
+		}
+	}
+
 	goproxy.GoproxyCa = goproxyCa
 	goproxy.OkConnect = &goproxy.ConnectAction{Action: goproxy.ConnectAccept, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
 	goproxy.MitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectMitm, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
