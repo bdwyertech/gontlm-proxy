@@ -27,10 +27,11 @@ script:
   - set -e
   - go get -t -v ./...
   - diff -u <(echo -n) <(gofmt -d .)
-  - go vet $(go list ./... | grep -v /vendor/)
-  - go test -v -race ./...
+  # - go vet $(go list ./... | grep -v /vendor/)
+  # - go test -v -race ./...
   - | # Only build binaries from the supported Go version
       if [ "${ARTIFACT}" = "true" ]; then
+        GOFLAGS=-mod=vendor
         gox -os="windows" \
             -arch="amd64" \
             -output="release/gontlm-proxy_{{.OS}}_{{.Arch}}" \
