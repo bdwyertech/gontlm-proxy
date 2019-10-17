@@ -1,0 +1,5 @@
+# Detect text files automatically
+* text=auto
+
+# Github Linguist
+vendor/* linguist-vendored
