@@ -11,8 +11,11 @@ import (
 )
 
 func main() {
-	proxyServer := getProxyServer()
-	log.Printf("Forwarding Proxy is: %q\n", proxyServer)
+	proxyServer := getEnv("GONTLM_PROXY", getProxyServer())
+	bind := getEnv("GONTLM_BIND", ":53128")
+	log.Printf("INFO: Forwarding Proxy is: %s\n", proxyServer)
+	log.Printf("INFO: Listening on: %s\n", bind)
+
 	proxyUrl, err := url.Parse("http://" + proxyServer)
 	if err != nil {
 		log.Fatal(err)
@@ -43,6 +46,6 @@ func main() {
 		return req, nil
 	})
 
-	log.Fatal(http.ListenAndServe(":53128", proxy))
+	log.Fatal(http.ListenAndServe(bind, proxy))
 
 }
