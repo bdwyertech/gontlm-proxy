@@ -1,0 +1,57 @@
+dist: bionic
+
+language: go
+sudo: false
+
+matrix:
+  include:
+    - go: 1.13.x
+      env:
+        - ARTIFACT=true
+    # - go: 1.12.x
+  allow_failures:
+    # - go: 1.14.x
+
+env:
+  global:
+    # Enable Go Module Support
+    - GO111MODULE=on
+
+before_install:
+  - go get github.com/mitchellh/gox
+
+install:
+  - # skip
+
+script:
+  - set -e
+  - go get -t -v ./...
+  - diff -u <(echo -n) <(gofmt -d .)
+  # - go vet $(go list ./... | grep -v /vendor/)
+  # - go test -v -race ./...
+  - | # Only build binaries from the supported Go version
+      if [ "${ARTIFACT}" = "true" ]; then
+        GOFLAGS=-mod=vendor
+        gox -os="windows" \
+            -arch="amd64" \
+            -output="release/gontlm-proxy_{{.OS}}_{{.Arch}}" \
+            -ldflags "-X main.Rev=`git rev-parse --short HEAD`" \
+            -verbose ./...;
+        find release/* -type f -exec sh -c 'sha256sum {} | cut -f1 -d" " > {}.SHA256SUM' \;
+      fi
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: "CupfzUWuT8FwZsO16zSOmMBpPMoDc+OKJBkL+dFPU5m6IbICaTkbj9GbP6CHz5+6bqB6/Hk7Dc7HYgoUUtfmwTi9DxYAh9Ei9/sQR26njXCvKK+IpnqgktRfCzu3RgY3DEWNIUKEqDbNgrvSRLn27viwxkHv1WEKUyV9r22044LFGhMhrI/wUm16mCpfSu/RTii5HIVJxnfnu5FoRWtetLwksiD3DwuG50ceTR9QTHPyfua4LDTl4dFukPoTtAvdF+6KywfzArW2CSeD4WoMR1OKEuEE23cCiceTM4m8bbTcKRxsGomY1bxPEyXig9cwS3lnz+CrrZZIFqXxBA63HEljGaZA/Xm0FkAcHT2jOquQOBKsmTgORTw6nz0FFjTji6hwgun/ltAnE4dXORz9R9a6YGB+L97tm4gYxs6OSOEmAWoioML7cERhifpp/grblWwOY2Ie/yH0k85a0o9pYhs94ztgBK1JN4zhyebXXvLmVoiHTSjXoedl2pbnljYYxRYNL3ehe9P8yzyX86wctR3h7s/wX3sH+F3NySnKp47nAViFKeic4Yt19ozgf9AGv8uqgP5NoGQqyGc92MkkzVzBV1zOMVZSB5b7U6W0bLi9CTK7Q/nTe/xDW9v+2P56KJrqKgdcqsYl5mj9xdnWx0cPj8IZXcSs4laUkZn7/Bc="
+  file:
+    - release/gontlm-proxy_windows_amd64.exe
+    - release/gontlm-proxy_windows_amd64.exe.SHA256SUM
+    # - release/gontlm-proxy_darwin_amd64
+    # - release/gontlm-proxy_darwin_amd64.SHA256SUM
+    # - release/gontlm-proxy_linux_amd64
+    # - release/gontlm-proxy_linux_amd64.SHA256SUM
+  on:
+    repo: bdwyertech/gontlm-proxy
+    tags: true
+    condition: $ARTIFACT = true
