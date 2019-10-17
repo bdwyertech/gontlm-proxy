@@ -1,16 +1,21 @@
+dist: bionic
+
 language: go
 sudo: false
+
 matrix:
   include:
     - go: 1.13.x
-      env: ARTIFACT=true
+      env:
+        - ARTIFACT=true
     # - go: 1.12.x
   allow_failures:
     # - go: 1.14.x
 
 env:
-  # Enable Go Module Support
-  - GO111MODULE=on
+  global:
+    # Enable Go Module Support
+    - GO111MODULE=on
 
 before_install:
   - go get github.com/mitchellh/gox
