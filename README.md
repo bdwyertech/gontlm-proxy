@@ -10,10 +10,15 @@
 This project was inspired by CNTLM & PX.  Operating behind a corporate proxy can make using tooling difficult.  It can also force you into putting your credentials into ENV variables, definitely not good!  The goal here is to leverage the Windows SSPI subsystem to authenticate to your proxy automatically.
 
 ## Usage
-TODO: Write some usage instructions
+When GoNTLM-Proxy first starts, it will create a self-signed certificate, unique to your system.  It is created in your home folder at `~/.gontlm-ca.pem` and `~/.gontlm-ca.key` respectively.  If you want to avoid validation errors, you can add the certificate to your systems trust store.
+
+It reads the configured proxy from the Windows Registry, or can be set via the `GONTLM_PROXY` environment variable.
+
+By default, GoNTLM-Proxy listens locally on port 53128, however this can be set via the `GONTLM_BIND` environment variable.
+
 
 ## Install
-
+Release binaries are available under the GitHub Releases page.  Alternatively, you can do this the Go way.
 ```console
 $ go get github.com/bdwyertech/gontlm-proxy
 ```

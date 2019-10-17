@@ -37,7 +37,7 @@ func setGoProxyCA() error {
 	if err != nil {
 		switch err.(type) {
 		case x509.UnknownAuthorityError:
-			log.Println("WARN: GoNTLM-Proxy certificate is not trusted... You should add it to your trusted CA store!")
+			log.Println("WARN: GoNTLM-Proxy certificate is not trusted... If you want to avoid validation errors, you can add the certificate to your systems trust store.")
 			log.Printf("WARN: GoNTLM-Proxy CA Cert Location: %s", cert)
 			log.Printf("WARN: %s", err)
 		default:
