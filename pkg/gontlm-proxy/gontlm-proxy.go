@@ -1,4 +1,4 @@
-package main
+package ntlm_proxy
 
 import (
 	"github.com/bhendo/concord"
@@ -10,7 +10,7 @@ import (
 	"regexp"
 )
 
-func main() {
+func Run() {
 	proxyServer := getEnv("GONTLM_PROXY", getProxyServer())
 	bind := getEnv("GONTLM_BIND", ":53128")
 	log.Printf("INFO: Forwarding Proxy is: %s\n", proxyServer)

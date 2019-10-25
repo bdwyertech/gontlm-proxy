@@ -1,5 +1,5 @@
 // +build windows
-package main
+package ntlm_proxy
 
 import (
 	"golang.org/x/sys/windows/registry"

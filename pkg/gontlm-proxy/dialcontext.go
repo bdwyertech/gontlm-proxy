@@ -1,4 +1,4 @@
-package main
+package ntlm_proxy
 
 import (
 	"context"
