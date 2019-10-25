@@ -25,7 +25,7 @@ $ go get github.com/bdwyertech/gontlm-proxy
 
 ## Development
 ```console
-$ go run .
+$ go run .\cmd\gontlm-proxy\
 ```
 
 ## License
