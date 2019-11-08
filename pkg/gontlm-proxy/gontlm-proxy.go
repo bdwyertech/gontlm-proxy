@@ -31,15 +31,16 @@ func Run() {
 	// Handle HTTPS Connect Requests
 	proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^.*"))).HandleConnect(AlwaysMitmAuth)
 
+	// NTLM Transport
+	tr := concord.Transport{
+		Proxy:           http.ProxyURL(proxyUrl),
+		ProxyAuthorizer: &handshakers.NTLMProxyAuthorizer{},
+	}
+
 	// Handle HTTP Connect Requests
 	proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-		t := concord.Transport{
-			Proxy:           http.ProxyURL(proxyUrl),
-			ProxyAuthorizer: &handshakers.NTLMProxyAuthorizer{},
-		}
-
 		ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
-			resp, err = t.RoundTrip(req)
+			resp, err = tr.RoundTrip(req)
 			return
 		})
 
