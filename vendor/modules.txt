@@ -6,6 +6,6 @@ github.com/bhendo/concord
 github.com/bhendo/concord/handshakers
 # github.com/elazarl/goproxy v0.0.0-20190911111923-ecfe977594f1
 github.com/elazarl/goproxy
-# golang.org/x/sys v0.0.0-20191010194322-b09406accb47
+# golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
