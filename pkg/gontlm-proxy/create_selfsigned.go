@@ -83,18 +83,18 @@ func createCertificate(certFile string, keyFile string) (err error) {
 
 	keyOut, err := os.OpenFile(keyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("Failed to open %s for writing:", keyFile, err)
+		log.Fatalf("Failed to open %v for writing:\n %v", keyFile, err)
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(privKey)
 	if err != nil {
-		log.Fatalf("Unable to marshal private key: %v", err)
+		log.Fatal("Unable to marshal private key:", err)
 	}
 	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
 		log.Fatalf("Failed to write key data to %s: %s", keyFile, err)
 	}
 	certOut, err := os.OpenFile(certFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		log.Fatalf("Failed to open %s for writing:", certFile, err)
+		log.Fatalf("Failed to open %v for writing:\n%v", certFile, err)
 	}
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw}); err != nil {
 		log.Fatalf("Failed to write certificate data to %s: %s", certFile, err)
