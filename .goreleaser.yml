@@ -9,7 +9,6 @@ builds:
   - main: ./cmd/gontlm-proxy
     env:
       - CGO_ENABLED=0
-    # - GOFLAGS=-mod=vendor
     goos:
       - windows
       # - linux
@@ -50,8 +49,3 @@ release:
 signs:
   # - artifacts: checksum
   # - artifacts: all
-
-gitlab_urls:
-  api: https://gitlab.com/api/v4/
-  download: https://gitlab.com
-  skip_tls_verify: false
