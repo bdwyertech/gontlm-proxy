@@ -1,0 +1,57 @@
+# Encoding: UTF-8
+project_name: gontlm-proxy
+
+before:
+  hooks:
+    # - go mod tidy
+    # - go generate ./...
+builds:
+  - main: ./cmd/gontlm-proxy
+    env:
+      - CGO_ENABLED=0
+    # - GOFLAGS=-mod=vendor
+    goos:
+      - windows
+      # - linux
+      # - darwin
+    goarch:
+      - amd64
+    flags:
+      - -mod=vendor
+    ldflags:
+      - -s -w -X main.GitCommit={{.ShortCommit}} -X main.ReleaseVer={{.Version}}
+
+archives:
+  - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - ONLY_BINARY*
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+    - Merge pull request
+    - Merge branch
+
+release:
+  # disable: true
+
+signs:
+  # - artifacts: checksum
+  # - artifacts: all
+
+gitlab_urls:
+  api: https://gitlab.com/api/v4/
+  download: https://gitlab.com
+  skip_tls_verify: false
