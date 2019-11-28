@@ -2,7 +2,7 @@
 :wrench:  NTLM Proxy Forwarder in Golang.
 
 [![GoDoc](https://godoc.org/github.com/bdwyertech/gontlm-proxy?status.svg)](https://godoc.org/github.com/bdwyertech/gontlm-proxy)
-[![Build Status](https://travis-ci.org/bdwyertech/gontlm-proxy.svg?branch=dev)](https://travis-ci.org/bdwyertech/gontlm-proxy)
+[![Build Status](https://github.com/bdwyertech/gontlm-proxy/workflows/Go/badge.svg?branch=master)](https://github.com/bdwyertech/gontlm-proxy/actions?query=workflow%3AGo+branch%3Amaster)
 [![Coverage Status](https://coveralls.io/repos/bdwyertech/gontlm-proxy/badge.svg?branch=dev&service=github)](https://coveralls.io/github/bdwyertech/gontlm-proxy?branch=dev)
 [![](https://badge.imagelayers.io/bdwyertech/gontlm-proxy:latest.svg)](https://imagelayers.io/?images=bdwyertech/gontlm-proxy:latest)
 
