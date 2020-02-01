@@ -9,4 +9,4 @@ require (
 	golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd
 )
 
-replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20191108055622-a50ae93d7e49
+replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200201231500-7e8ac30130c1
