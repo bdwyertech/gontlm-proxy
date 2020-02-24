@@ -1,13 +1,16 @@
 package ntlm_proxy
 
 import (
-	"github.com/bhendo/concord"
-	"github.com/bhendo/concord/handshakers"
-	"github.com/elazarl/goproxy"
+	"crypto/tls"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
+
+	"github.com/bhendo/concord"
+	"github.com/bhendo/concord/handshakers"
+	"github.com/elazarl/goproxy"
 )
 
 func Run() {
@@ -23,6 +26,9 @@ func Run() {
 	setGoProxyCA()
 	proxy := goproxy.NewProxyHttpServer()
 	proxy.Verbose = false
+	if _, enabled := os.LookupEnv("GONTLM_PROXY_VERBOSE"); enabled {
+		proxy.Verbose = true
+	}
 
 	var AlwaysMitmAuth goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 		return goproxy.MitmConnect, host
@@ -31,10 +37,17 @@ func Run() {
 	// Handle HTTPS Connect Requests
 	proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^.*"))).HandleConnect(AlwaysMitmAuth)
 
+	// TLS Client Configuration
+	tlsClientConfig := &tls.Config{}
+	if _, disabled := os.LookupEnv("GONTLM_PROXY_NO_SSL_VERIFY"); disabled {
+		tlsClientConfig.InsecureSkipVerify = true
+	}
+
 	// NTLM Transport
 	tr := concord.Transport{
 		Proxy:           http.ProxyURL(proxyUrl),
 		ProxyAuthorizer: &handshakers.NTLMProxyAuthorizer{},
+		TLSClientConfig: tlsClientConfig,
 	}
 
 	// Handle HTTP Connect Requests
