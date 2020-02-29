@@ -1,11 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	proxy "github.com/bdwyertech/gontlm-proxy/pkg/gontlm-proxy"
-)
 
-import "flag"
+	proxy "gontlm-proxy/pkg/gontlm-proxy"
+)
 
 var verFlag = flag.Bool("version", false, "Display version")
 

@@ -1,4 +1,4 @@
-module github.com/bdwyertech/gontlm-proxy
+module gontlm-proxy
 
 go 1.13
 
