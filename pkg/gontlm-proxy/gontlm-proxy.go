@@ -15,7 +15,7 @@ import (
 
 func Run() {
 	proxyServer := getEnv("GONTLM_PROXY", getProxyServer())
-	bind := getEnv("GONTLM_BIND", ":53128")
+	bind := getEnv("GONTLM_BIND", ":3128")
 	log.Printf("INFO: Forwarding Proxy is: %s\n", proxyServer)
 	log.Printf("INFO: Listening on: %s\n", bind)
 
