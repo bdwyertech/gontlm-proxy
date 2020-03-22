@@ -14,7 +14,7 @@ When GoNTLM-Proxy first starts, it will create a self-signed certificate, unique
 
 It reads the configured proxy from the Windows Registry, or can be set via the `GONTLM_PROXY` environment variable.
 
-By default, GoNTLM-Proxy listens locally on port 53128, however this can be set via the `GONTLM_BIND` environment variable.
+By default, GoNTLM-Proxy listens locally on port 3128, however this can be set via the `GONTLM_BIND` environment variable.
 
 
 ## Install
