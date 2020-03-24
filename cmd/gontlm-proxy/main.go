@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	proxy "gontlm-proxy/pkg/gontlm-proxy"
+	proxy "github.com/bdwyertech/gontlm-proxy/pkg/gontlm-proxy"
 )
 
 var verFlag = flag.Bool("version", false, "Display version")
