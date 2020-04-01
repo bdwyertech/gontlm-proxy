@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"runtime"
 
 	proxy "github.com/bdwyertech/gontlm-proxy/pkg/gontlm-proxy"
 )
@@ -29,5 +30,10 @@ func main() {
 		showVersion()
 		return
 	}
-	proxy.Run()
+
+	if runtime.GOOS == "windows" {
+		proxy.RunWindows()
+	} else {
+		proxy.Run()
+	}
 }

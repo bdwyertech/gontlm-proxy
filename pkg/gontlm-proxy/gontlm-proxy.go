@@ -2,6 +2,7 @@ package ntlm_proxy
 
 import (
 	"crypto/tls"
+	"flag"
 	"log"
 	"net/http"
 	"net/url"
@@ -12,6 +13,14 @@ import (
 	"github.com/bhendo/concord/handshakers"
 	"github.com/elazarl/goproxy"
 )
+
+var proxyServer string
+
+func init() {
+	if flag.Lookup("proxy") == nil {
+		flag.StringVar(&proxyServer, "proxy", getProxyServer(), "Forwarding proxy server")
+	}
+}
 
 func Run() {
 	proxyServer := getEnv("GONTLM_PROXY", getProxyServer())

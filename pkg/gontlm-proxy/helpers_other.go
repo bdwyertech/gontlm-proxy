@@ -2,11 +2,7 @@
 
 package ntlm_proxy
 
-import (
-	"os"
-)
-
 func getProxyServer() (proxyServer string) {
-	proxyServer = os.Args[1]
+	proxyServer = getEnv("GONTLM_PROXY", "")
 	return
 }
