@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
+	"time"
 
 	"github.com/bhendo/concord"
 	"github.com/bhendo/concord/handshakers"
@@ -17,13 +17,10 @@ import (
 var proxyServer string
 
 func init() {
-	if flag.Lookup("proxy") == nil {
-		flag.StringVar(&proxyServer, "proxy", getProxyServer(), "Forwarding proxy server")
-	}
+	flag.StringVar(&proxyServer, "proxy", getEnv("GONTLM_PROXY", getProxyServer()), "Forwarding proxy server")
 }
 
 func Run() {
-	proxyServer := getEnv("GONTLM_PROXY", getProxyServer())
 	bind := getEnv("GONTLM_BIND", ":3128")
 	log.Printf("INFO: Forwarding Proxy is: %s\n", proxyServer)
 	log.Printf("INFO: Listening on: %s\n", bind)
@@ -38,13 +35,7 @@ func Run() {
 	if _, enabled := os.LookupEnv("GONTLM_PROXY_VERBOSE"); enabled {
 		proxy.Verbose = true
 	}
-
-	var AlwaysMitmAuth goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
-		return goproxy.MitmConnect, host
-	}
-
-	// Handle HTTPS Connect Requests
-	proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^.*"))).HandleConnect(AlwaysMitmAuth)
+	proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 
 	// TLS Client Configuration
 	tlsClientConfig := &tls.Config{}
@@ -54,9 +45,10 @@ func Run() {
 
 	// NTLM Transport
 	tr := concord.Transport{
-		Proxy:           http.ProxyURL(proxyUrl),
-		ProxyAuthorizer: &handshakers.NTLMProxyAuthorizer{},
-		TLSClientConfig: tlsClientConfig,
+		Proxy:               http.ProxyURL(proxyUrl),
+		ProxyAuthorizer:     &handshakers.NTLMProxyAuthorizer{},
+		TLSClientConfig:     tlsClientConfig,
+		TLSHandshakeTimeout: time.Second * 15,
 	}
 
 	// Handle HTTP Connect Requests
@@ -69,6 +61,14 @@ func Run() {
 		return req, nil
 	})
 
-	log.Fatal(http.ListenAndServe(bind, proxy))
+	srv := &http.Server{
+		Addr:         bind,
+		Handler:      proxy,
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+	}
+
+	log.Fatal(srv.ListenAndServe())
 
 }
