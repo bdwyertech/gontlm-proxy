@@ -14,16 +14,19 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
+var proxyBind string
 var proxyServer string
+var proxyVerbose bool
 
 func init() {
+	flag.StringVar(&proxyBind, "bind", getEnv("GONTLM_BIND", "0.0.0.0:3128"), "IP & Port to bind to")
 	flag.StringVar(&proxyServer, "proxy", getEnv("GONTLM_PROXY", getProxyServer()), "Forwarding proxy server")
+	flag.BoolVar(&proxyVerbose, "verbose", false, "Enable verbose logging")
 }
 
 func Run() {
-	bind := getEnv("GONTLM_BIND", ":3128")
 	log.Printf("INFO: Forwarding Proxy is: %s\n", proxyServer)
-	log.Printf("INFO: Listening on: %s\n", bind)
+	log.Printf("INFO: Listening on: %s\n", proxyBind)
 
 	proxyUrl, err := url.Parse("http://" + proxyServer)
 	if err != nil {
@@ -31,7 +34,7 @@ func Run() {
 	}
 	setGoProxyCA()
 	proxy := goproxy.NewProxyHttpServer()
-	proxy.Verbose = false
+	proxy.Verbose = proxyVerbose
 	if _, enabled := os.LookupEnv("GONTLM_PROXY_VERBOSE"); enabled {
 		proxy.Verbose = true
 	}
@@ -62,7 +65,7 @@ func Run() {
 	})
 
 	srv := &http.Server{
-		Addr:         bind,
+		Addr:         proxyBind,
 		Handler:      proxy,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
