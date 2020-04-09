@@ -12,7 +12,7 @@ github.com/elazarl/goproxy
 # github.com/kardianos/service v1.0.1-0.20191211031725-3c356ae54c8a
 ## explicit
 github.com/kardianos/service
-# golang.org/x/sys v0.0.0-20190204203706-41f3e6584952
+# golang.org/x/sys v0.0.0-20200408040146-ea54a3c99b9b
 ## explicit
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
