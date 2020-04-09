@@ -237,7 +237,9 @@ func (proxy *ProxyHttpServer) handleHttps(w http.ResponseWriter, r *http.Request
 					ctx.Logf("resp %v", resp.Status)
 				}
 				resp = proxy.filterResponse(resp, ctx)
-				defer resp.Body.Close()
+				// the underlying Transport will close the client request body.
+				// https://github.com/golang/go/blob/ab5d9f5831cd267e0d8e8954cfe9987b737aec9c/src/net/http/request.go#L179-L182
+				// defer resp.Body.Close()
 
 				if err := resp.Write(rawClientTls); err != nil {
 					ctx.Warnf("Cannot write TLS response from mitm'd client: %v", err)

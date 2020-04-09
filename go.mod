@@ -2,7 +2,7 @@ module github.com/bdwyertech/gontlm-proxy
 
 go 1.14
 
-replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200404045139-65e701b37f53
+replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200409011847-cf029cf8ac54
 
 require (
 	github.com/alexbrainman/sspi v0.0.0-20180613141037-e580b900e9f5
