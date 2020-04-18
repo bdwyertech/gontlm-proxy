@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"flag"
@@ -24,7 +24,7 @@ func showVersion() {
 	fmt.Println("commit:", GitCommit)
 }
 
-func main() {
+func Execute() {
 	flag.Parse()
 	if *verFlag {
 		showVersion()
