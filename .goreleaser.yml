@@ -6,7 +6,7 @@ before:
     # - go mod tidy
     # - go generate ./...
 builds:
-  - main: ./cmd/gontlm-proxy
+  - main: .
     env:
       - CGO_ENABLED=0
     goos:
