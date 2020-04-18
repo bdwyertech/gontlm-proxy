@@ -1,14 +1,11 @@
 package proxyplease
 
 import (
-	"log"
-	"os"
+	log "github.com/sirupsen/logrus"
 )
 
-var l = log.New(os.Stdout, "", log.LstdFlags)
-
 var debugf = func(format string, a ...interface{}) {
-	l.Printf("proxyplease."+format, a...)
+	log.Debugf("proxyplease."+format, a...)
 }
 
 // SetDebugf sets a debugf function for debug output

@@ -2,8 +2,9 @@
 package ntlm_proxy
 
 import (
-	"log"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 
 	"golang.org/x/sys/windows/registry"
 )
@@ -23,7 +24,7 @@ func getProxyServer() (proxyServer string) {
 
 	proxyServer, _, err = k.GetStringValue("ProxyServer")
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
 	return
 }

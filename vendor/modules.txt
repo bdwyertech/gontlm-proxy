@@ -1,9 +1,8 @@
 # github.com/alexbrainman/sspi v0.0.0-20180613141037-e580b900e9f5
-## explicit
 github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/aus/proxyplease v0.0.0-20200207024103-49defe237a30 => github.com/bdwyertech/proxyplease v0.0.0-20200418174334-20a87f0335a2
+# github.com/aus/proxyplease v0.0.0-20200207024103-49defe237a30 => github.com/bdwyertech/proxyplease v0.0.0-20200418183505-056440848627
 ## explicit
 github.com/aus/proxyplease
 # github.com/elazarl/goproxy v0.0.0-20200310082302-296d8939dc5a => github.com/bdwyertech/goproxy v0.0.0-20200418161122-ca28c8abeeda
@@ -15,16 +14,25 @@ github.com/git-lfs/go-ntlm/ntlm/md4
 # github.com/kardianos/service v1.0.1-0.20191211031725-3c356ae54c8a
 ## explicit
 github.com/kardianos/service
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
+# github.com/mattn/go-colorable v0.1.6
+## explicit
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.12
+github.com/mattn/go-isatty
 # github.com/rapid7/go-get-proxied v0.0.0-20181210221417-16249a544090
 github.com/rapid7/go-get-proxied/proxy
 github.com/rapid7/go-get-proxied/winhttp
-# github.com/stretchr/testify v1.5.1
+# github.com/sirupsen/logrus v1.5.0
 ## explicit
+github.com/sirupsen/logrus
 # golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
+# golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae
 ## explicit
+golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
 golang.org/x/sys/windows/svc
@@ -33,4 +41,4 @@ golang.org/x/sys/windows/svc/mgr
 # h12.io/socks v1.0.1-0.20190209111100-4847cdfaff65
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200418161122-ca28c8abeeda
-# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20200418174334-20a87f0335a2
+# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20200418183505-056440848627

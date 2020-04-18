@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/aus/proxyplease"
 	"github.com/elazarl/goproxy"
@@ -28,8 +29,8 @@ func init() {
 }
 
 func Run() {
-	log.Printf("INFO: Forwarding Proxy is: %s\n", proxyServer)
-	log.Printf("INFO: Listening on: %s\n", proxyBind)
+	log.Infof("Forwarding Proxy is: %s", proxyServer)
+	log.Infof("Listening on: %s", proxyBind)
 
 	proxyUrl, err := url.Parse("http://" + proxyServer)
 	if err != nil {
@@ -37,8 +38,8 @@ func Run() {
 	}
 	setGoProxyCA()
 	proxy := goproxy.NewProxyHttpServer()
-	proxy.Verbose = proxyVerbose
-	if _, enabled := os.LookupEnv("GONTLM_PROXY_VERBOSE"); enabled {
+	if _, enabled := os.LookupEnv("GONTLM_PROXY_VERBOSE"); proxyVerbose || enabled {
+		log.SetLevel(log.DebugLevel)
 		proxy.Verbose = true
 	}
 	dialContext := proxyplease.NewDialContext(proxyplease.Proxy{URL: proxyUrl})

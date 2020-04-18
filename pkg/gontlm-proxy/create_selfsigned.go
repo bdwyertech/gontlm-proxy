@@ -7,12 +7,13 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
-	"log"
 	"math/big"
 	"net"
 	"os"
 	"os/user"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func CertTemplate() (*x509.Certificate, error) {

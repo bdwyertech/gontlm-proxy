@@ -6,9 +6,10 @@ package ntlm_proxy
 
 import (
 	"flag"
-	"log"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/kardianos/service"
+	"github.com/mattn/go-colorable"
 )
 
 type program struct {
@@ -53,9 +54,11 @@ func RunWindows() {
 
 func (p *program) Start(s service.Service) (err error) {
 	if service.Interactive() {
-		log.Println("Running in terminal.")
+		log.SetFormatter(&log.TextFormatter{ForceColors: true})
+		log.SetOutput(colorable.NewColorableStdout())
+		log.Info("Running in terminal.")
 	} else {
-		log.Println("Running under service manager.")
+		log.Info("Running under service manager.")
 	}
 	p.exit = make(chan struct{})
 

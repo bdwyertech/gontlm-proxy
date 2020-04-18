@@ -3,7 +3,7 @@
 package ntlm_proxy
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 func RunWindows() {
