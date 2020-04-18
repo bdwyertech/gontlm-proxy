@@ -38,8 +38,10 @@ func Run() {
 	}
 	setGoProxyCA()
 	proxy := goproxy.NewProxyHttpServer()
-	if _, enabled := os.LookupEnv("GONTLM_PROXY_VERBOSE"); proxyVerbose || enabled {
-		log.SetLevel(log.DebugLevel)
+	if _, verbose := os.LookupEnv("GONTLM_PROXY_VERBOSE"); log.IsLevelEnabled(log.DebugLevel) || proxyVerbose || verbose {
+		if !log.IsLevelEnabled(log.DebugLevel) {
+			log.SetLevel(log.DebugLevel)
+		}
 		proxy.Verbose = true
 	}
 	dialContext := proxyplease.NewDialContext(proxyplease.Proxy{URL: proxyUrl})
