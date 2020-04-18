@@ -75,11 +75,9 @@ func Run() {
 	})
 
 	srv := &http.Server{
-		Addr:         proxyBind,
-		Handler:      proxy,
-		WriteTimeout: time.Second * 15,
-		ReadTimeout:  time.Second * 15,
-		IdleTimeout:  time.Second * 60,
+		Addr:        proxyBind,
+		Handler:     proxy,
+		IdleTimeout: time.Second * 60,
 	}
 
 	log.Fatal(srv.ListenAndServe())
