@@ -20,6 +20,7 @@ github.com/konsorten/go-windows-terminal-sequences
 ## explicit
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
+## explicit
 github.com/mattn/go-isatty
 # github.com/rapid7/go-get-proxied v0.0.0-20181210221417-16249a544090
 github.com/rapid7/go-get-proxied/proxy

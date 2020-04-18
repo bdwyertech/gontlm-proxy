@@ -10,6 +10,8 @@ import (
 
 	"github.com/kardianos/service"
 	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
+	"os"
 )
 
 type program struct {
@@ -54,8 +56,10 @@ func RunWindows() {
 
 func (p *program) Start(s service.Service) (err error) {
 	if service.Interactive() {
-		log.SetFormatter(&log.TextFormatter{ForceColors: true})
-		log.SetOutput(colorable.NewColorableStdout())
+		if isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()) {
+			log.SetFormatter(&log.TextFormatter{ForceColors: true})
+			log.SetOutput(colorable.NewColorableStdout())
+		}
 		log.Info("Running in terminal.")
 	} else {
 		log.Info("Running under service manager.")
