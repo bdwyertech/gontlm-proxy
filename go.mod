@@ -4,6 +4,8 @@ go 1.14
 
 replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200418161122-ca28c8abeeda
 
+replace github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20200418174334-20a87f0335a2
+
 require (
 	github.com/alexbrainman/sspi v0.0.0-20180613141037-e580b900e9f5
 	github.com/aus/proxyplease v0.0.0-20200207024103-49defe237a30

@@ -41,13 +41,14 @@ func Run() {
 	if _, enabled := os.LookupEnv("GONTLM_PROXY_VERBOSE"); enabled {
 		proxy.Verbose = true
 	}
+	dialContext := proxyplease.NewDialContext(proxyplease.Proxy{URL: proxyUrl})
 	proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		return proxyplease.NewDialContext(proxyplease.Proxy{URL: proxyUrl})(ctx, network, addr)
+		return dialContext(ctx, network, addr)
 	}
 	proxy.Tr.Proxy = nil
-	proxy.Tr.DialContext = proxyplease.NewDialContext(proxyplease.Proxy{URL: proxyUrl})
+	proxy.Tr.DialContext = dialContext
 	proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 
 	// TLS Client Configuration
@@ -57,7 +58,7 @@ func Run() {
 	}
 
 	// NTLM Transport
-	// _ = concord.Transport{
+	// tr := concord.Transport{
 	// 	Proxy:               http.ProxyURL(proxyUrl),
 	// 	ProxyAuthorizer:     &handshakers.NTLMProxyAuthorizer{},
 	// 	TLSClientConfig:     tlsClientConfig,
@@ -83,3 +84,10 @@ func Run() {
 	log.Fatal(srv.ListenAndServe())
 
 }
+
+// Check if it is a WebSocketUpgrade
+// func IsWebSocketUpgrade() goproxy.ReqConditionFunc {
+// 	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
+// 		return websocket.IsWebSocketUpgrade(req)
+// 	}
+// }

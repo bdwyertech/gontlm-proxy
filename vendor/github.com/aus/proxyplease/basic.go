@@ -20,14 +20,14 @@ func dialBasic(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Con
 	}
 
 	u := fmt.Sprintf("%s:%s", p.Username, p.Password)
-	h := p.Headers
+	h := p.Headers.Clone()
 	h.Set("Proxy-Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(u))))
 	h.Set("Proxy-Connection", "Keep-Alive")
 	connect := &http.Request{
 		Method: "CONNECT",
 		URL:    &url.URL{Opaque: addr},
 		Host:   addr,
-		Header: *h,
+		Header: h,
 	}
 	if err := connect.Write(conn); err != nil {
 		debugf("basic> Could not write authorization message to proxy: %s", err)

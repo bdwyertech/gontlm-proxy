@@ -18,13 +18,13 @@ func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error
 	}
 
 	// build and write first CONNECT request
-	h := p.Headers
+	h := p.Headers.Clone()
 	h.Set("Proxy-Connection", "Keep-Alive")
 	connect := &http.Request{
 		Method: "CONNECT",
 		URL:    &url.URL{Opaque: addr},
 		Host:   addr,
-		Header: *p.Headers,
+		Header: h,
 	}
 	if err := connect.Write(conn); err != nil {
 		debugf("connect> CONNECT to proxy failed: %s", err)

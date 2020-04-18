@@ -49,14 +49,14 @@ func dialNegotiate(p Proxy, addr string, baseDial func() (net.Conn, error)) (net
 	}
 	defer secctx.Release()
 
-	head := p.Headers
+	head := p.Headers.Clone()
 	head.Set("Proxy-Authorization", fmt.Sprintf("Negotiate %s", base64.StdEncoding.EncodeToString(token)))
 	head.Set("Proxy-Connection", "Keep-Alive")
 	connect := &http.Request{
 		Method: "CONNECT",
 		URL:    &url.URL{Opaque: addr},
 		Host:   addr,
-		Header: *head,
+		Header: head,
 	}
 	if err := connect.Write(conn); err != nil {
 		debugf("negotiate> Could not write token message to proxy: %s", err)

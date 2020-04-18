@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/alexbrainman/sspi"
 	"github.com/alexbrainman/sspi/ntlm"
@@ -45,14 +46,14 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 	}
 	defer secctx.Release()
 
-	h := p.Headers
+	h := p.Headers.Clone()
 	h.Set("Proxy-Authorization", fmt.Sprintf("NTLM %s", base64.StdEncoding.EncodeToString(negotiate)))
 	h.Set("Proxy-Connection", "Keep-Alive")
 	connect := &http.Request{
 		Method: "CONNECT",
 		URL:    &url.URL{Opaque: addr},
 		Host:   addr,
-		Header: *h,
+		Header: h,
 	}
 	if err := connect.Write(conn); err != nil {
 		debugf("ntlm> Could not write negotiate message to proxy: %s", err)
@@ -70,7 +71,18 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		return conn, errors.New("Unexpected HTTP status code")
 	}
 
-	challenge, err := base64.StdEncoding.DecodeString(resp.Header["Proxy-Authenticate"][0][5:])
+	challengeHeaders, found := resp.Header["Proxy-Authenticate"]
+	if !found {
+		return conn, errors.New("did not receive a challenge from the server")
+	}
+	if len(challengeHeaders) != 1 {
+		return conn, errors.New("received malformed challenge from the server")
+	}
+	if len(challengeHeaders[0]) < 6 || !strings.HasPrefix(challengeHeaders[0], "NTLM ") {
+		return conn, errors.New("received malformed challenge from the server")
+	}
+
+	challenge, err := base64.StdEncoding.DecodeString(challengeHeaders[0][5:])
 	if err != nil {
 		debugf("ntlm> Could not read challenge response")
 		return conn, err
@@ -83,14 +95,14 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 	}
 
 	resp.Body.Close()
-	h = p.Headers
+	h = p.Headers.Clone()
 	h.Set("Proxy-Authorization", fmt.Sprintf("NTLM %s", base64.StdEncoding.EncodeToString(authenticate)))
 	h.Set("Proxy-Connection", "Keep-Alive")
 	connect = &http.Request{
 		Method: "CONNECT",
 		URL:    &url.URL{Opaque: addr},
 		Host:   addr,
-		Header: *h,
+		Header: h,
 	}
 	if err := connect.Write(conn); err != nil {
 		debugf("ntlm> Could not write authenticate message to proxy: %s", err)
