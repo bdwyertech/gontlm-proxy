@@ -3,14 +3,14 @@ package ntlm_proxy
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/elazarl/goproxy"
-	"log"
 	"os"
 	"os/user"
 	"path"
+
+	log "github.com/sirupsen/logrus"
 )
 
-func setGoProxyCA() error {
+func SetupGoProxyCA() (goproxyCa tls.Certificate) {
 	usr, err := user.Current()
 	if err != nil {
 		log.Fatal(err)
@@ -23,13 +23,13 @@ func setGoProxyCA() error {
 		createCertificate(cert, key)
 	}
 
-	goproxyCa, err := tls.LoadX509KeyPair(cert, key)
+	goproxyCa, err = tls.LoadX509KeyPair(cert, key)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 
 	if goproxyCa.Leaf, err = x509.ParseCertificate(goproxyCa.Certificate[0]); err != nil {
-		return err
+		log.Fatal(err)
 	}
 
 	// Validate CA Certificate
@@ -45,10 +45,5 @@ func setGoProxyCA() error {
 		}
 	}
 
-	goproxy.GoproxyCa = goproxyCa
-	goproxy.OkConnect = &goproxy.ConnectAction{Action: goproxy.ConnectAccept, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.MitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectMitm, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.HTTPMitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectHTTPMitm, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.RejectConnect = &goproxy.ConnectAction{Action: goproxy.ConnectReject, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	return nil
+	return
 }

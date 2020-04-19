@@ -2,7 +2,6 @@ package ntlm_proxy
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"net"
 	"net/http"
@@ -36,14 +35,27 @@ func Run() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	setGoProxyCA()
+
+	goproxy.GoproxyCa = SetupGoProxyCA()
 	proxy := goproxy.NewProxyHttpServer()
+
+	//
+	// Log Configuration
+	//
 	if _, verbose := os.LookupEnv("GONTLM_PROXY_VERBOSE"); log.IsLevelEnabled(log.DebugLevel) || proxyVerbose || verbose {
 		if !log.IsLevelEnabled(log.DebugLevel) {
 			log.SetLevel(log.DebugLevel)
 		}
 		proxy.Verbose = true
 	}
+	// Override ProxyPlease Logger
+	proxyplease.SetDebugf(func(section string, msgs ...interface{}) {
+		log.Debugf("proxyplease."+section, msgs...)
+	})
+
+	//
+	// Dial Context
+	//
 	dialContext := proxyplease.NewDialContext(proxyplease.Proxy{URL: proxyUrl})
 	proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -52,14 +64,18 @@ func Run() {
 	}
 	proxy.Tr.Proxy = nil
 	proxy.Tr.DialContext = dialContext
-	proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 
-	// TLS Client Configuration
-	tlsClientConfig := &tls.Config{}
-	if _, disabled := os.LookupEnv("GONTLM_PROXY_NO_SSL_VERIFY"); disabled {
-		tlsClientConfig.InsecureSkipVerify = true
+	// Connect Handler
+	var AlwaysMitm goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+		MitmConnect := &goproxy.ConnectAction{
+			Action:    goproxy.ConnectMitm,
+			TLSConfig: goproxy.TLSConfigFromCA(&goproxy.GoproxyCa),
+		}
+
+		return MitmConnect, host
 	}
 
+	proxy.OnRequest().HandleConnect(AlwaysMitm)
 	// NTLM Transport
 	// tr := concord.Transport{
 	// 	Proxy:               http.ProxyURL(proxyUrl),
