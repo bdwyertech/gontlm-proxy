@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	// "regexp"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -65,16 +66,33 @@ func Run() {
 	proxy.Tr.Proxy = nil
 	proxy.Tr.DialContext = dialContext
 
+	//
+	// HTTP Handler
+	//
+	//	var HttpConnect goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+	//		HTTPConnect := &goproxy.ConnectAction{
+	//			Action:    goproxy.ConnectAccept,
+	//			TLSConfig: goproxy.TLSConfigFromCA(&goproxy.GoproxyCa),
+	//		}
+	//
+	//		return HTTPConnect, host
+	//	}
+	//	proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile(".*:80$|.*:8080$"))).HandleConnect(HttpConnect)
+
+	//
 	// Connect Handler
+	//
 	var AlwaysMitm goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
-		MitmConnect := &goproxy.ConnectAction{
-			Action:    goproxy.ConnectMitm,
+		HTTPSConnect := &goproxy.ConnectAction{
+			// ConnectMitm enables SSL Interception.
+			// Action:    goproxy.ConnectMitm,
+			// ConnectAccept preserves upstream SSL Certificates, etc. TCP tunneling basically.
+			Action:    goproxy.ConnectAccept,
 			TLSConfig: goproxy.TLSConfigFromCA(&goproxy.GoproxyCa),
 		}
 
-		return MitmConnect, host
+		return HTTPSConnect, host
 	}
-
 	proxy.OnRequest().HandleConnect(AlwaysMitm)
 	// NTLM Transport
 	// tr := concord.Transport{
