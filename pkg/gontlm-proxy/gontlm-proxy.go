@@ -23,7 +23,7 @@ var proxyServer string
 var proxyVerbose bool
 
 func init() {
-	flag.StringVar(&proxyBind, "bind", getEnv("GONTLM_BIND", "0.0.0.0:3128"), "IP & Port to bind to")
+	flag.StringVar(&proxyBind, "bind", getEnv("GONTLM_BIND", "http://0.0.0.0:3128"), "IP & Port to bind to")
 	flag.StringVar(&proxyServer, "proxy", getEnv("GONTLM_PROXY", getProxyServer()), "Forwarding proxy server")
 	flag.BoolVar(&proxyVerbose, "verbose", false, "Enable verbose logging")
 }
@@ -32,6 +32,18 @@ func Run() {
 	proxyUrl, err := url.Parse(proxyServer)
 	if err != nil {
 		log.Fatal(err)
+	}
+	bind, err := url.Parse(proxyBind)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if isLocalHost(proxyUrl.Hostname()) {
+		if bind.Port() == proxyUrl.Port() {
+			log.WithFields(log.Fields{
+				"Bind":  bind.Host,
+				"Proxy": proxyUrl.Host,
+			}).Fatal("Loop condition detected!")
+		}
 	}
 
 	goproxy.GoproxyCa = SetupGoProxyCA()
@@ -106,7 +118,7 @@ func Run() {
 	// })
 
 	srv := &http.Server{
-		Addr:        proxyBind,
+		Addr:        bind.Host,
 		Handler:     proxy,
 		IdleTimeout: time.Second * 60,
 	}
