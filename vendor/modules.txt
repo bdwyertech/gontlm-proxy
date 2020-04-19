@@ -2,10 +2,10 @@
 github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/aus/proxyplease v0.0.0-20200207024103-49defe237a30 => github.com/bdwyertech/proxyplease v0.0.0-20200418183505-056440848627
+# github.com/aus/proxyplease v0.0.0-20200207024103-49defe237a30 => github.com/bdwyertech/proxyplease v0.0.0-20200419011350-b922e3822bff
 ## explicit
 github.com/aus/proxyplease
-# github.com/elazarl/goproxy v0.0.0-20200310082302-296d8939dc5a => github.com/bdwyertech/goproxy v0.0.0-20200418161122-ca28c8abeeda
+# github.com/elazarl/goproxy v0.0.0-20200310082302-296d8939dc5a => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
 ## explicit
 github.com/elazarl/goproxy
 # github.com/git-lfs/go-ntlm v0.0.0-20190401175752-c5056e7fa066
@@ -41,5 +41,5 @@ golang.org/x/sys/windows/svc/eventlog
 golang.org/x/sys/windows/svc/mgr
 # h12.io/socks v1.0.1-0.20190209111100-4847cdfaff65
 h12.io/socks
-# github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200418161122-ca28c8abeeda
-# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20200418183505-056440848627
+# github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
+# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20200419011350-b922e3822bff

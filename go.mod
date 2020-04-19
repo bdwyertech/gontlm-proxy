@@ -2,9 +2,9 @@ module github.com/bdwyertech/gontlm-proxy
 
 go 1.14
 
-replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200418161122-ca28c8abeeda
+replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
 
-replace github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20200418183505-056440848627
+replace github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20200419011350-b922e3822bff
 
 // replace github.com/aus/proxyplease => ../proxyplease
 

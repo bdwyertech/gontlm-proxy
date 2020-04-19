@@ -35,7 +35,20 @@ func (proxy *ProxyHttpServer) serveWebsocketTLS(ctx *ProxyCtx, w http.ResponseWr
 		return
 	}
 	defer conn.Close()
+	// Upgrade Connection to TLS
 	targetConn := tls.Client(conn, tlsConfig)
+	if err := targetConn.Handshake(); err != nil {
+		ctx.Warnf("Websocket TLS Handshake error: %v", err)
+		return
+	}
+	// TLS Certificate Validation
+	if !tlsConfig.InsecureSkipVerify {
+		desired := targetURL.Hostname()
+		if err := targetConn.VerifyHostname(desired); err != nil {
+			ctx.Warnf("Websocket TLS VerifyHostname error: %v, %v", desired, err)
+			return
+		}
+	}
 
 	// Perform handshake
 	if err := proxy.websocketHandshake(ctx, req, targetConn, clientConn); err != nil {
