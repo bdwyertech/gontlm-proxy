@@ -18,22 +18,22 @@ import (
 	// "github.com/bhendo/concord/handshakers"
 )
 
-var proxyBind string
-var proxyServer string
-var proxyVerbose bool
+var ProxyBind string
+var ProxyServer string
+var ProxyVerbose bool
 
 func init() {
-	flag.StringVar(&proxyBind, "bind", getEnv("GONTLM_BIND", "http://0.0.0.0:3128"), "IP & Port to bind to")
-	flag.StringVar(&proxyServer, "proxy", getEnv("GONTLM_PROXY", getProxyServer()), "Forwarding proxy server")
-	flag.BoolVar(&proxyVerbose, "verbose", false, "Enable verbose logging")
+	flag.StringVar(&ProxyBind, "bind", getEnv("GONTLM_BIND", "http://0.0.0.0:3128"), "IP & Port to bind to")
+	flag.StringVar(&ProxyServer, "proxy", getEnv("GONTLM_PROXY", getProxyServer()), "Forwarding proxy server")
+	flag.BoolVar(&ProxyVerbose, "verbose", false, "Enable verbose logging")
 }
 
 func Run() {
-	proxyUrl, err := url.Parse(proxyServer)
+	proxyUrl, err := url.Parse(ProxyServer)
 	if err != nil {
 		log.Fatal(err)
 	}
-	bind, err := url.Parse(proxyBind)
+	bind, err := url.Parse(ProxyBind)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,12 +50,12 @@ func Run() {
 	proxy := goproxy.NewProxyHttpServer()
 
 	log.Infof("Forwarding Proxy is: %s", proxyUrl.String())
-	log.Infof("Listening on: %s", proxyBind)
+	log.Infof("Listening on: %s", bind.Host)
 
 	//
 	// Log Configuration
 	//
-	if _, verbose := os.LookupEnv("GONTLM_PROXY_VERBOSE"); log.IsLevelEnabled(log.DebugLevel) || proxyVerbose || verbose {
+	if _, verbose := os.LookupEnv("GONTLM_PROXY_VERBOSE"); log.IsLevelEnabled(log.DebugLevel) || ProxyVerbose || verbose {
 		if !log.IsLevelEnabled(log.DebugLevel) {
 			log.SetLevel(log.DebugLevel)
 		}

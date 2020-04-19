@@ -31,7 +31,7 @@ func RunWindows() {
 		Name:        "gontlm-proxy",
 		DisplayName: "GoNTLM Proxy",
 		Description: "GoNTLM Forwarding Proxy",
-		Arguments:   []string{"-proxy", proxyServer},
+		Arguments:   []string{"-proxy", ProxyServer},
 	}
 
 	prg := &program{}
