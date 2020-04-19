@@ -26,5 +26,8 @@ func getProxyServer() (proxyServer string) {
 	if err != nil {
 		log.Error(err)
 	}
+	if proxyServer != "" {
+		proxyServer = "http://" + proxyServer
+	}
 	return
 }

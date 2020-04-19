@@ -29,16 +29,16 @@ func init() {
 }
 
 func Run() {
-	log.Infof("Forwarding Proxy is: %s", proxyServer)
-	log.Infof("Listening on: %s", proxyBind)
-
-	proxyUrl, err := url.Parse("http://" + proxyServer)
+	proxyUrl, err := url.Parse(proxyServer)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	goproxy.GoproxyCa = SetupGoProxyCA()
 	proxy := goproxy.NewProxyHttpServer()
+
+	log.Infof("Forwarding Proxy is: %s", proxyUrl.String())
+	log.Infof("Listening on: %s", proxyBind)
 
 	//
 	// Log Configuration
@@ -84,7 +84,7 @@ func Run() {
 	//
 	var AlwaysMitm goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 		HTTPSConnect := &goproxy.ConnectAction{
-			// ConnectMitm enables SSL Interception.
+			// ConnectMitm enables SSL Interception, required for request filtering over HTTPS.
 			// Action:    goproxy.ConnectMitm,
 			// ConnectAccept preserves upstream SSL Certificates, etc. TCP tunneling basically.
 			Action:    goproxy.ConnectAccept,
@@ -94,23 +94,16 @@ func Run() {
 		return HTTPSConnect, host
 	}
 	proxy.OnRequest().HandleConnect(AlwaysMitm)
-	// NTLM Transport
-	// tr := concord.Transport{
-	// 	Proxy:               http.ProxyURL(proxyUrl),
-	// 	ProxyAuthorizer:     &handshakers.NTLMProxyAuthorizer{},
-	// 	TLSClientConfig:     tlsClientConfig,
-	// 	TLSHandshakeTimeout: time.Second * 15,
-	// }
 
-	// Handle Requests
-	proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-		// ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
-		// 	resp, err = tr.RoundTrip(req)
-		// 	return
-		// })
-
-		return req, nil
-	})
+	//
+	// Request Handling
+	//
+	// MITM Action is required for HTTPS Requests (e.g. goproxy.ConnectMitm instead of goproxy.ConnectAccept)
+	//
+	// proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+	// 	log.Fatal(req.URL.String())
+	// 	return req, nil
+	// })
 
 	srv := &http.Server{
 		Addr:        proxyBind,
