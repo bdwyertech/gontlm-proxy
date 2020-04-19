@@ -16,6 +16,19 @@ It reads the configured proxy from the Windows Registry, or can be set via the `
 
 By default, GoNTLM-Proxy listens locally on port 3128, however this can be set via the `GONTLM_BIND` environment variable.
 
+## Background Task
+Running this as a background task is likely preferred over running it as a service.  Unfortunately, Windows does not let you run services as users without specifying credentials unless you turn off some Security Policy and I do not recommend this.  The whole purpose of this project is to remove the need for hardcoded credentials after all.
+
+Chances are, you want to use this with a CLI tool, so I have found it best to run this as a background job with PowerShell.  The beauty of this is that when you close your terminal, it also kills the process.
+
+```powershell
+function GoNTLM-Enable {
+	Remove-Job -Name GoCNTLM-Proxy -Force -ErrorAction SilentlyContinue
+	Start-Job -Name GoNTLM-Proxy -ScriptBlock { C:\Path\to\gontlm-proxy.exe }
+	$env:http_proxy='http://127.0.0.1:3128'
+}
+```
+
 ## Service
 If you run this as a service, it will run as NT AUTHORITY/SYSTEM.  If you wish to run it as another user, you can edit the service after installation.
 
