@@ -6,7 +6,7 @@
 
 package main
 
-import "github.com/bdwyertech/gontlm-proxy/cmd/gontlm-proxy"
+import "github.com/bdwyertech/gontlm-proxy/cmd"
 
 func main() {
 	cmd.Execute()

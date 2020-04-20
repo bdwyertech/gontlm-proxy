@@ -18,7 +18,10 @@ builds:
     flags:
       - -mod=vendor
     ldflags:
-      - -s -w -X main.GitCommit={{.ShortCommit}} -X main.ReleaseVer={{.Version}}
+      - -s -w
+      - -X github.com/bdwyertech/gontlm-proxy/cmd.GitCommit={{.ShortCommit}}
+      - -X github.com/bdwyertech/gontlm-proxy/cmd.ReleaseVer={{.Version}}
+      - -X github.com/bdwyertech/gontlm-proxy/cmd.ReleaseDate={{.Date}}
 
 archives:
   - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
