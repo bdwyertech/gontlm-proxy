@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	proxy "github.com/bdwyertech/gontlm-proxy/pkg/gontlm-proxy"
+	proxy "github.com/bdwyertech/gontlm-proxy/pkg"
 )
 
 var verFlag = flag.Bool("version", false, "Display version")
