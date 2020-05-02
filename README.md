@@ -5,6 +5,10 @@
 [![Build Status](https://github.com/bdwyertech/gontlm-proxy/workflows/Go/badge.svg?branch=master)](https://github.com/bdwyertech/gontlm-proxy/actions?query=workflow%3AGo+branch%3Amaster)
 [![Coverage Status](https://coveralls.io/repos/github/bdwyertech/gontlm-proxy/badge.svg?branch=master)](https://coveralls.io/github/bdwyertech/gontlm-proxy?branch=master)
 
+[![Gitter](https://img.shields.io/badge/Gitter-bdwyertech%2Fgontlm--proxy-brightgreen.svg)][gitter]
+
+[gitter]: https://gitter.im/bdwyertech/gontlm-proxy
+
 ## Overview
 This project was inspired by CNTLM & PX.  Operating behind a corporate proxy can make using tooling difficult.  It can also force you into putting your credentials into ENV variables, definitely not good!  The goal here is to leverage the Windows SSPI subsystem to authenticate to your proxy automatically.
 
