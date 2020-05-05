@@ -60,9 +60,9 @@ func (p *program) Start(s service.Service) (err error) {
 			log.SetFormatter(&log.TextFormatter{ForceColors: true})
 			log.SetOutput(colorable.NewColorableStdout())
 		}
-		log.Info("Running in terminal.")
+		log.Debug("Running in terminal.")
 	} else {
-		log.Info("Running under service manager.")
+		log.Debug("Running under service manager.")
 	}
 	p.exit = make(chan struct{})
 
