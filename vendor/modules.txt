@@ -14,7 +14,7 @@ github.com/git-lfs/go-ntlm/ntlm/md4
 # github.com/kardianos/service v1.0.1-0.20191211031725-3c356ae54c8a
 ## explicit
 github.com/kardianos/service
-# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+# github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/mattn/go-colorable v0.1.6
 ## explicit
@@ -25,7 +25,7 @@ github.com/mattn/go-isatty
 # github.com/rapid7/go-get-proxied v0.0.0-20181210221417-16249a544090
 github.com/rapid7/go-get-proxied/proxy
 github.com/rapid7/go-get-proxied/winhttp
-# github.com/sirupsen/logrus v1.5.0
+# github.com/sirupsen/logrus v1.6.0
 ## explicit
 github.com/sirupsen/logrus
 # golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
