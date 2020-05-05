@@ -46,7 +46,6 @@ func Run() {
 		}
 	}
 
-	goproxy.GoproxyCa = SetupGoProxyCA()
 	proxy := goproxy.NewProxyHttpServer()
 
 	log.Infof("Forwarding Proxy is: %s", proxyUrl.String())
@@ -95,15 +94,16 @@ func Run() {
 	// Connect Handler
 	//
 	var AlwaysMitm goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
-		HTTPSConnect := &goproxy.ConnectAction{
-			// ConnectMitm enables SSL Interception, required for request filtering over HTTPS.
-			// Action:    goproxy.ConnectMitm,
-			// ConnectAccept preserves upstream SSL Certificates, etc. TCP tunneling basically.
-			Action:    goproxy.ConnectAccept,
-			TLSConfig: goproxy.TLSConfigFromCA(&goproxy.GoproxyCa),
-		}
+		// HTTPSConnect := &goproxy.ConnectAction{
+		// 	// ConnectMitm enables SSL Interception, required for request filtering over HTTPS.
+		// 	// Action:    goproxy.ConnectMitm,
+		// 	// ConnectAccept preserves upstream SSL Certificates, etc. TCP tunneling basically.
+		// 	Action:    goproxy.ConnectAccept,
+		// 	TLSConfig: goproxy.TLSConfigFromCA(&goproxy.GoproxyCa),
+		// }
 
-		return HTTPSConnect, host
+		// return HTTPSConnect, host
+		return goproxy.OkConnect, host
 	}
 	proxy.OnRequest().HandleConnect(AlwaysMitm)
 
