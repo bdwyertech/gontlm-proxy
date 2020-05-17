@@ -28,6 +28,7 @@ func showVersion() {
 	fmt.Println("version:", ReleaseVer)
 	fmt.Println("commit:", GitCommit)
 	fmt.Println("date:", ReleaseDate)
+	fmt.Println("runtime:", runtime.Version())
 }
 
 func Execute() {
