@@ -24,8 +24,10 @@ jobs:
         env:
           GOFLAGS: '-mod=vendor'
         run: |
-          go fmt $(go list ./... | grep -v /vendor/)
+          GO111MODULE=off go get honnef.co/go/tools/cmd/staticcheck
+          go fmt $(go list ./... | grep -v /vendor/) | xargs -I {} -r /bin/sh -c "/bin/echo {} && exit 1"
           go vet $(go list ./... | grep -v /vendor/)
+          staticcheck $(go list ./... | grep -v /vendor/)
           go test -v -race $(go list ./... | grep -v /vendor/)
 
       - name: Run GoReleaser
