@@ -11,9 +11,10 @@ replace github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-2
 require (
 	github.com/aus/proxyplease v0.0.0-20200207024103-49defe237a30
 	github.com/elazarl/goproxy v0.0.0-20200310082302-296d8939dc5a
-	github.com/kardianos/service v1.0.1-0.20191211031725-3c356ae54c8a
-	github.com/mattn/go-colorable v0.1.6
+	github.com/kardianos/service v1.1.0
+	github.com/mattn/go-colorable v0.1.7
 	github.com/mattn/go-isatty v0.0.12
 	github.com/sirupsen/logrus v1.6.0
+	github.com/stretchr/testify v1.6.1 // indirect
 	golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae
 )
