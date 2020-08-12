@@ -6,7 +6,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        go: [1.14]
+        go: [1.15]
     runs-on: ubuntu-latest
     container: golang:${{ matrix.go }}
     steps:
@@ -31,7 +31,7 @@ jobs:
           go test -v -race $(go list ./... | grep -v /vendor/)
 
       - name: Run GoReleaser
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && (matrix.go == 1.15)
         uses: goreleaser/goreleaser-action@v1
         with:
           version: latest
