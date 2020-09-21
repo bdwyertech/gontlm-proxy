@@ -29,27 +29,30 @@ func init() {
 }
 
 func Run() {
-	proxyUrl, err := url.Parse(ProxyServer)
-	if err != nil {
-		log.Fatal(err)
-	}
 	bind, err := url.Parse(ProxyBind)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if isLocalHost(proxyUrl.Hostname()) {
-		if bind.Port() == proxyUrl.Port() {
-			log.WithFields(log.Fields{
-				"Bind":  bind.Host,
-				"Proxy": proxyUrl.Host,
-			}).Fatal("Loop condition detected!")
+	log.Infof("Listening on: %s", bind.Host)
+
+	var proxyUrl *url.URL
+	if ProxyServer != "" {
+		proxyUrl, err = url.Parse(ProxyServer)
+		if err != nil {
+			log.Fatal(err)
 		}
+		if isLocalHost(proxyUrl.Hostname()) {
+			if bind.Port() == proxyUrl.Port() {
+				log.WithFields(log.Fields{
+					"Bind":  bind.Host,
+					"Proxy": proxyUrl.Host,
+				}).Fatal("Loop condition detected!")
+			}
+		}
+		log.Infof("Forwarding Proxy is: %s", proxyUrl.String())
 	}
 
 	proxy := goproxy.NewProxyHttpServer()
-
-	log.Infof("Forwarding Proxy is: %s", proxyUrl.String())
-	log.Infof("Listening on: %s", bind.Host)
 
 	//
 	// Log Configuration

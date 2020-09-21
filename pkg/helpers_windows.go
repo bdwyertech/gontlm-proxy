@@ -22,12 +22,37 @@ func getProxyServer() (proxyServer string) {
 	}
 	defer k.Close()
 
-	proxyServer, _, err = k.GetStringValue("ProxyServer")
+	// Check if Proxy is enabled
+	proxyEnable, _, err := k.GetIntegerValue("ProxyEnable")
 	if err != nil {
-		log.Error(err)
+		log.Errorln("Could not retrieve value for registry key ProxyEnable:", err)
 	}
-	if proxyServer != "" {
-		proxyServer = "http://" + proxyServer
+
+	if proxyEnable == 0 {
+		// Check for PAC file
+		pacFile, _, err := k.GetStringValue("AutoConfigURL")
+		if err != nil {
+			log.Errorln("Could not retrieve value for registry key AutoConfigURL:", err)
+		}
+		if pacFile == "" {
+			log.Warn("No PAC file detected and Proxy is not enabled in Internet Settings")
+			return
+		} else {
+			// Ensure we use PAC over Proxy ENV variables in ProxyPlease
+			os.Unsetenv("HTTP_PROXY")
+			os.Unsetenv("HTTPS_PROXY")
+		}
 	}
+
+	if proxyEnable == 1 {
+		proxyServer, _, err = k.GetStringValue("ProxyServer")
+		if err != nil {
+			log.Error(err)
+		}
+		if proxyServer != "" {
+			proxyServer = "http://" + proxyServer
+		}
+	}
+
 	return
 }
