@@ -41,6 +41,7 @@ func getProxyServer() (proxyServer string) {
 			// Ensure we use PAC over Proxy ENV variables in ProxyPlease
 			os.Unsetenv("HTTP_PROXY")
 			os.Unsetenv("HTTPS_PROXY")
+			log.Debugln("Using Proxy Auto-Configuration (PAC) file:", pacFile)
 		}
 	}
 
