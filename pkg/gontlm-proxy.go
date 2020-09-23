@@ -37,7 +37,7 @@ func Run() {
 		if !log.IsLevelEnabled(log.DebugLevel) {
 			log.SetLevel(log.DebugLevel)
 		}
-		proxy.Verbose = ProxyVerbose
+		proxy.Verbose = true
 	}
 	// Override ProxyPlease Logger
 	proxyplease.SetDebugf(func(section string, msgs ...interface{}) {
