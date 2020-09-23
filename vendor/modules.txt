@@ -31,7 +31,7 @@ github.com/sirupsen/logrus
 # golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sys v0.0.0-20200918174421-af09f7315aff
+# golang.org/x/sys v0.0.0-20200922070232-aee5d888a860
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
