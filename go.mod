@@ -1,6 +1,6 @@
 module github.com/bdwyertech/gontlm-proxy
 
-go 1.14
+go 1.15
 
 replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
 
@@ -15,5 +15,5 @@ require (
 	github.com/mattn/go-colorable v0.1.7
 	github.com/mattn/go-isatty v0.0.12
 	github.com/sirupsen/logrus v1.6.0
-	golang.org/x/sys v0.0.0-20200810151505-1b9f1253b3ed
+	golang.org/x/sys v0.0.0-20200922070232-aee5d888a860
 )

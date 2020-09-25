@@ -75,12 +75,8 @@ func (p *program) run() (err error) {
 	// Run the Proxy
 	go Run()
 	// Wait for Exit Signal
-	for {
-		select {
-		case <-p.exit:
-			return
-		}
-	}
+	<-p.exit
+	return
 }
 
 func (p *program) Stop(s service.Service) (err error) {

@@ -24,33 +24,12 @@ var ProxyVerbose bool
 
 func init() {
 	flag.StringVar(&ProxyBind, "bind", getEnv("GONTLM_BIND", "http://0.0.0.0:3128"), "IP & Port to bind to")
-	flag.StringVar(&ProxyServer, "proxy", getEnv("GONTLM_PROXY", getProxyServer()), "Forwarding proxy server")
+	flag.StringVar(&ProxyServer, "proxy", getEnv("GONTLM_PROXY", ""), "Forwarding proxy server")
 	flag.BoolVar(&ProxyVerbose, "verbose", false, "Enable verbose logging")
 }
 
 func Run() {
-	proxyUrl, err := url.Parse(ProxyServer)
-	if err != nil {
-		log.Fatal(err)
-	}
-	bind, err := url.Parse(ProxyBind)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if isLocalHost(proxyUrl.Hostname()) {
-		if bind.Port() == proxyUrl.Port() {
-			log.WithFields(log.Fields{
-				"Bind":  bind.Host,
-				"Proxy": proxyUrl.Host,
-			}).Fatal("Loop condition detected!")
-		}
-	}
-
 	proxy := goproxy.NewProxyHttpServer()
-
-	log.Infof("Forwarding Proxy is: %s", proxyUrl.String())
-	log.Infof("Listening on: %s", bind.Host)
-
 	//
 	// Log Configuration
 	//
@@ -64,6 +43,33 @@ func Run() {
 	proxyplease.SetDebugf(func(section string, msgs ...interface{}) {
 		log.Debugf("proxyplease."+section, msgs...)
 	})
+
+	if ProxyServer == "" {
+		ProxyServer = getProxyServer()
+	}
+
+	bind, err := url.Parse(ProxyBind)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Infof("Listening on: %s", bind.Host)
+
+	var proxyUrl *url.URL
+	if ProxyServer != "" {
+		proxyUrl, err = url.Parse(ProxyServer)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if isLocalHost(proxyUrl.Hostname()) {
+			if bind.Port() == proxyUrl.Port() {
+				log.WithFields(log.Fields{
+					"Bind":  bind.Host,
+					"Proxy": proxyUrl.Host,
+				}).Fatal("Loop condition detected!")
+			}
+		}
+		log.Infof("Forwarding Proxy is: %s", proxyUrl.String())
+	}
 
 	//
 	// Dial Context
