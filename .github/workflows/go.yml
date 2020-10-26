@@ -32,7 +32,7 @@ jobs:
 
       - name: Run GoReleaser
         if: startsWith(github.ref, 'refs/tags/') && (matrix.go == 1.15)
-        uses: goreleaser/goreleaser-action@v1
+        uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
           args: release
