@@ -12,8 +12,8 @@ require (
 	github.com/aus/proxyplease v0.0.0-00010101000000-000000000000
 	github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000
 	github.com/kardianos/service v1.1.0
-	github.com/mattn/go-colorable v0.1.7
+	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.12
-	github.com/sirupsen/logrus v1.6.0
-	golang.org/x/sys v0.0.0-20200922070232-aee5d888a860
+	github.com/sirupsen/logrus v1.7.0
+	golang.org/x/sys v0.0.0-20201113135734-0a15ea8d9b02
 )
