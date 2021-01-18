@@ -11,7 +11,7 @@ github.com/elazarl/goproxy
 # github.com/git-lfs/go-ntlm v0.0.0-20190401175752-c5056e7fa066
 github.com/git-lfs/go-ntlm/ntlm
 github.com/git-lfs/go-ntlm/ntlm/md4
-# github.com/kardianos/service v1.1.0
+# github.com/kardianos/service v1.2.0
 ## explicit
 github.com/kardianos/service
 # github.com/mattn/go-colorable v0.1.8
@@ -29,7 +29,7 @@ github.com/sirupsen/logrus
 # golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sys v0.0.0-20201113135734-0a15ea8d9b02
+# golang.org/x/sys v0.0.0-20210113181707-4bcb84eeeb78
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
