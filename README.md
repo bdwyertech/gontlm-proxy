@@ -23,7 +23,7 @@ Chances are, you want to use this with a CLI tool, so I have found it best to ru
 
 ```powershell
 function GoNTLM-Enable {
-	Remove-Job -Name GoCNTLM-Proxy -Force -ErrorAction SilentlyContinue
+	Remove-Job -Name GoNTLM-Proxy -Force -ErrorAction SilentlyContinue
 	Start-Job -Name GoNTLM-Proxy -ScriptBlock { C:\Path\to\gontlm-proxy.exe }
 	$env:http_proxy='http://127.0.0.1:3128'
 }
