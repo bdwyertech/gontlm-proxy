@@ -2,7 +2,7 @@
 github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.0.0-20200419011350-b922e3822bff
+# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.0.0-20210216145527-c133604f9d6f
 ## explicit
 github.com/aus/proxyplease
 # github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
@@ -14,6 +14,9 @@ github.com/git-lfs/go-ntlm/ntlm/md4
 # github.com/kardianos/service v1.2.0
 ## explicit
 github.com/kardianos/service
+# github.com/magefile/mage v1.10.0
+github.com/magefile/mage/mg
+github.com/magefile/mage/sh
 # github.com/mattn/go-colorable v0.1.8
 ## explicit
 github.com/mattn/go-colorable
@@ -23,13 +26,13 @@ github.com/mattn/go-isatty
 # github.com/rapid7/go-get-proxied v0.0.0-20181210221417-16249a544090
 github.com/rapid7/go-get-proxied/proxy
 github.com/rapid7/go-get-proxied/winhttp
-# github.com/sirupsen/logrus v1.7.0
+# github.com/sirupsen/logrus v1.7.1
 ## explicit
 github.com/sirupsen/logrus
-# golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
+# golang.org/x/net v0.0.0-20200707034311-ab3426394381
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sys v0.0.0-20210113181707-4bcb84eeeb78
+# golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -38,7 +41,7 @@ golang.org/x/sys/windows/registry
 golang.org/x/sys/windows/svc
 golang.org/x/sys/windows/svc/eventlog
 golang.org/x/sys/windows/svc/mgr
-# h12.io/socks v1.0.1-0.20190209111100-4847cdfaff65
+# h12.io/socks v1.0.1
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
-# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20200419011350-b922e3822bff
+# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20210216145527-c133604f9d6f
