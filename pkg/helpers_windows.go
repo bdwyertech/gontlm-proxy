@@ -1,4 +1,5 @@
 // +build windows
+
 package ntlm_proxy
 
 import (
