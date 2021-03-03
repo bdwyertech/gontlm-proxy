@@ -3,7 +3,7 @@ github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/internal/common
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.1.1-0.20210303022047-cbd8b4c78f9c
+# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.1.1-0.20210303181440-dd8fd22fb29e
 ## explicit
 github.com/aus/proxyplease
 # github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
@@ -45,4 +45,4 @@ golang.org/x/sys/windows/svc/mgr
 # h12.io/socks v1.0.2
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
-# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.1.1-0.20210303022047-cbd8b4c78f9c
+# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.1.1-0.20210303181440-dd8fd22fb29e

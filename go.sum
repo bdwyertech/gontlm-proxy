@@ -2,8 +2,8 @@ github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74 h1:Kk6a4nehpJ3Uu
 github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74/go.mod h1:cEWa1LVoE5KvSD9ONXsZrj0z6KqySlCCNKHlLzbqAt4=
 github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9 h1:Eu3d1Y6dGkfqvQ+S0v5RccH8pBZlzhOTBU+U7NQmlRs=
 github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9/go.mod h1:Ro8st/ElPeALwNFlcTpWmkr6IoMFfkjXAvTHpevnDsM=
-github.com/bdwyertech/proxyplease v0.1.1-0.20210303022047-cbd8b4c78f9c h1:YVRo2aq5ytdCle/uYH05cffuljlcByhqFHvFWQSVuB0=
-github.com/bdwyertech/proxyplease v0.1.1-0.20210303022047-cbd8b4c78f9c/go.mod h1:xWR6Km73y2+JZ/bd07IkspHrPOtwvdJ2PmKdg5DEI64=
+github.com/bdwyertech/proxyplease v0.1.1-0.20210303181440-dd8fd22fb29e h1:p7L1dCNOxb9xA5ql/wvf3AhXS94XrwpMs3akOLM+zBA=
+github.com/bdwyertech/proxyplease v0.1.1-0.20210303181440-dd8fd22fb29e/go.mod h1:xWR6Km73y2+JZ/bd07IkspHrPOtwvdJ2PmKdg5DEI64=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
