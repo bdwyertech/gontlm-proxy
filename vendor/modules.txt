@@ -1,8 +1,9 @@
-# github.com/alexbrainman/sspi v0.0.0-20180613141037-e580b900e9f5
+# github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74
 github.com/alexbrainman/sspi
+github.com/alexbrainman/sspi/internal/common
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.0.0-20210216145527-c133604f9d6f
+# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.1.1-0.20210303022047-cbd8b4c78f9c
 ## explicit
 github.com/aus/proxyplease
 # github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
@@ -29,10 +30,10 @@ github.com/rapid7/go-get-proxied/winhttp
 # github.com/sirupsen/logrus v1.8.0
 ## explicit
 github.com/sirupsen/logrus
-# golang.org/x/net v0.0.0-20200707034311-ab3426394381
+# golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sys v0.0.0-20210217105451-b926d437f341
+# golang.org/x/sys v0.0.0-20210303074136-134d130e1a04
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -41,7 +42,7 @@ golang.org/x/sys/windows/registry
 golang.org/x/sys/windows/svc
 golang.org/x/sys/windows/svc/eventlog
 golang.org/x/sys/windows/svc/mgr
-# h12.io/socks v1.0.1
+# h12.io/socks v1.0.2
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
-# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.0.0-20210216145527-c133604f9d6f
+# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.1.1-0.20210303022047-cbd8b4c78f9c

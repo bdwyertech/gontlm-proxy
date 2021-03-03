@@ -78,7 +78,7 @@ func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error
 				}
 				return conn, err
 
-			case "Negotiate":
+			case "Negotiate", "NEGOTIATE":
 				if !contains(p.AuthSchemeFilter, "Negotiate") {
 					debugf("connect> Skipping Negotiate due to AuthSchemeFilter")
 					continue
