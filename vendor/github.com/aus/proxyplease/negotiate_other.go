@@ -8,5 +8,5 @@ import (
 )
 
 func dialNegotiate(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn, error) {
-	return nil, errors.New("Negotiate proxy authentication is only available on Windows")
+	return nil, errors.New("negotiate proxy authentication is only available on Windows")
 }

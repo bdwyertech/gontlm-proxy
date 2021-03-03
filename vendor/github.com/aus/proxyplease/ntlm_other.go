@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Azure/go-ntlmssp"
 	"github.com/git-lfs/go-ntlm/ntlm"
 )
 
@@ -31,14 +32,15 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 	}
 
 	session.SetUserInfo(p.Username, p.Password, p.Domain)
-	negotiateMsg, err := session.GenerateNegotiateMessage()
+
+	negotiateMsg, err := ntlmssp.NewNegotiateMessage(p.Domain, p.Username)
 	if err != nil {
 		debugf("ntlm> Error creating Negotiate message")
 		return conn, err
 	}
 
 	h := p.Headers.Clone()
-	h.Set("Proxy-Authorization", fmt.Sprintf("NTLM %s", base64.StdEncoding.EncodeToString(negotiateMsg.Bytes)))
+	h.Set("Proxy-Authorization", fmt.Sprintf("NTLM %s", base64.StdEncoding.EncodeToString(negotiateMsg)))
 	h.Set("Proxy-Connection", "Keep-Alive")
 	connect := &http.Request{
 		Method: "CONNECT",
