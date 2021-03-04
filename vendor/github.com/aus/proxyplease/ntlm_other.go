@@ -12,8 +12,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Azure/go-ntlmssp"
-	"github.com/git-lfs/go-ntlm/ntlm"
+	"github.com/launchdarkly/go-ntlmssp"
 )
 
 func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn, error) {
@@ -24,14 +23,6 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		debugf("ntlm> Could not call dial context with proxy: %s", err)
 		return conn, err
 	}
-
-	session, err := ntlm.CreateClientSession(ntlm.Version1, ntlm.ConnectionlessMode)
-	if err != nil {
-		debugf("ntlm> Error creating client session")
-		return conn, err
-	}
-
-	session.SetUserInfo(p.Username, p.Password, p.Domain)
 
 	negotiateMsg, err := ntlmssp.NewNegotiateMessage(p.Domain, p.Username)
 	if err != nil {
@@ -58,6 +49,9 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		debugf("ntlm> Could not read negotiate response from proxy: %s", err)
 		return conn, err
 	}
+	if err := resp.Body.Close(); err != nil {
+		return conn, err
+	}
 
 	if resp.StatusCode != http.StatusProxyAuthRequired {
 		debugf("ntlm> Expected %d as return status, got: %d", http.StatusProxyAuthRequired, resp.StatusCode)
@@ -81,27 +75,14 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		return conn, err
 	}
 
-	challenge, err := ntlm.ParseChallengeMessage(challengeBytes)
+	authBytes, err := ntlmssp.ProcessChallenge(challengeBytes, p.Username, p.Password)
 	if err != nil {
-		debugf("ntlm> Error parsing challenge message")
+		debugf("ntlm> Error processing challenge message")
 		return conn, err
 	}
 
-	err = session.ProcessChallengeMessage(challenge)
-	if err != nil {
-		debugf("ntlm> Error processing challenge messgage")
-		return conn, err
-	}
-
-	authenticate, err := session.GenerateAuthenticateMessage()
-	if err != nil {
-		debugf("ntlm> Error generating  authenticate message")
-		return conn, err
-	}
-
-	resp.Body.Close()
 	h = p.Headers.Clone()
-	h.Set("Proxy-Authorization", fmt.Sprintf("NTLM %s", base64.StdEncoding.EncodeToString(authenticate.Bytes())))
+	h.Set("Proxy-Authorization", fmt.Sprintf("NTLM %s", base64.StdEncoding.EncodeToString(authBytes)))
 	h.Set("Proxy-Connection", "Keep-Alive")
 	connect = &http.Request{
 		Method: "CONNECT",

@@ -1,22 +1,19 @@
-# github.com/Azure/go-ntlmssp v0.0.0-20200615164410-66371956d46c
-github.com/Azure/go-ntlmssp
 # github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74
 github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/internal/common
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.1.1-0.20210303211131-a5d95bc283d2
+# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.1.1-0.20210304025852-a16bce5f30dd
 ## explicit
 github.com/aus/proxyplease
 # github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
 ## explicit
 github.com/elazarl/goproxy
-# github.com/git-lfs/go-ntlm v0.0.0-20190401175752-c5056e7fa066
-github.com/git-lfs/go-ntlm/ntlm
-github.com/git-lfs/go-ntlm/ntlm/md4
 # github.com/kardianos/service v1.2.0
 ## explicit
 github.com/kardianos/service
+# github.com/launchdarkly/go-ntlmssp v1.0.1
+github.com/launchdarkly/go-ntlmssp
 # github.com/magefile/mage v1.10.0
 github.com/magefile/mage/mg
 github.com/magefile/mage/sh
@@ -49,4 +46,4 @@ golang.org/x/sys/windows/svc/mgr
 # h12.io/socks v1.0.2
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
-# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.1.1-0.20210303211131-a5d95bc283d2
+# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.1.1-0.20210304025852-a16bce5f30dd

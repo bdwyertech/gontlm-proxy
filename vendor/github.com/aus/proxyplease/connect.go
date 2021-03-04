@@ -66,7 +66,7 @@ func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error
 					continue
 				}
 				return conn, err
-			case "Basic":
+			case "Basic", "BASIC":
 				if !contains(p.AuthSchemeFilter, "Basic") {
 					debugf("connect> Skipping Basic due to AuthSchemeFilter")
 					continue

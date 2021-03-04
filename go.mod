@@ -4,7 +4,7 @@ go 1.16
 
 replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
 
-replace github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.1.1-0.20210303211131-a5d95bc283d2
+replace github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.1.1-0.20210304025852-a16bce5f30dd
 
 // replace github.com/aus/proxyplease => ../proxyplease
 
