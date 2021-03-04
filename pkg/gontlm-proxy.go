@@ -68,7 +68,7 @@ func Run() {
 				}).Fatal("Loop condition detected!")
 			}
 		}
-		log.Infof("Forwarding Proxy is: %s", proxyUrl.String())
+		log.Infof("Forwarding Proxy is: %s", proxyUrl.Redacted())
 	}
 
 	//
