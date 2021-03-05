@@ -13,7 +13,7 @@
 package proxy
 
 import (
-	"github.com/rapid7/go-get-proxied/winhttp"
+	"github.com/bdwyertech/go-get-proxied/winhttp"
 	"log"
 	"net/url"
 	"reflect"

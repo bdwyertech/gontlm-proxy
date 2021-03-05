@@ -183,6 +183,7 @@ func (p *providerDarwin) scutil(protocol string, targetUrl *url.URL) (Proxy, err
 
 	if scutilCfg.ProxyAutoConfigEnable == "1" && scutilCfg.ProxyAutoConfigURLString != "" {
 		pacOnce.Do(func() {
+			log.Println("[proxy.Provider.scutil]: Retrieving ProxyAutoConfigURL:", scutilCfg.ProxyAutoConfigURLString)
 			resp, err := http.Get(scutilCfg.ProxyAutoConfigURLString)
 			if err != nil {
 				log.Fatal(err)

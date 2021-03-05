@@ -9,7 +9,6 @@ package windows
 import (
 	errorspkg "errors"
 	"fmt"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -346,7 +345,6 @@ func NewCallbackCDecl(fn interface{}) uintptr {
 //sys	SetInformationJobObject(job Handle, JobObjectInformationClass uint32, JobObjectInformation uintptr, JobObjectInformationLength uint32) (ret int, err error)
 //sys	GenerateConsoleCtrlEvent(ctrlEvent uint32, processGroupID uint32) (err error)
 //sys	GetProcessId(process Handle) (id uint32, err error)
-//sys	QueryFullProcessImageName(proc Handle, flags uint32, exeName *uint16, size *uint32) (err error) = kernel32.QueryFullProcessImageNameW
 //sys	OpenThread(desiredAccess uint32, inheritHandle bool, threadId uint32) (handle Handle, err error)
 //sys	SetProcessPriorityBoost(process Handle, disable bool) (err error) = kernel32.SetProcessPriorityBoost
 //sys	GetProcessWorkingSetSizeEx(hProcess Handle, lpMinimumWorkingSetSize *uintptr, lpMaximumWorkingSetSize *uintptr, flags *uint32)
@@ -382,17 +380,10 @@ func NewCallbackCDecl(fn interface{}) uintptr {
 //sys	stringFromGUID2(rguid *GUID, lpsz *uint16, cchMax int32) (chars int32) = ole32.StringFromGUID2
 //sys	coCreateGuid(pguid *GUID) (ret error) = ole32.CoCreateGuid
 //sys	CoTaskMemFree(address unsafe.Pointer) = ole32.CoTaskMemFree
-//sys	CoInitializeEx(reserved uintptr, coInit uint32) (ret error) = ole32.CoInitializeEx
-//sys	CoUninitialize() = ole32.CoUninitialize
-//sys	CoGetObject(name *uint16, bindOpts *BIND_OPTS3, guid *GUID, functionTable **uintptr) (ret error) = ole32.CoGetObject
 //sys	getProcessPreferredUILanguages(flags uint32, numLanguages *uint32, buf *uint16, bufSize *uint32) (err error) = kernel32.GetProcessPreferredUILanguages
 //sys	getThreadPreferredUILanguages(flags uint32, numLanguages *uint32, buf *uint16, bufSize *uint32) (err error) = kernel32.GetThreadPreferredUILanguages
 //sys	getUserPreferredUILanguages(flags uint32, numLanguages *uint32, buf *uint16, bufSize *uint32) (err error) = kernel32.GetUserPreferredUILanguages
 //sys	getSystemPreferredUILanguages(flags uint32, numLanguages *uint32, buf *uint16, bufSize *uint32) (err error) = kernel32.GetSystemPreferredUILanguages
-//sys	findResource(module Handle, name uintptr, resType uintptr) (resInfo Handle, err error) = kernel32.FindResourceW
-//sys	SizeofResource(module Handle, resInfo Handle) (size uint32, err error) = kernel32.SizeofResource
-//sys	LoadResource(module Handle, resInfo Handle) (resData Handle, err error) = kernel32.LoadResource
-//sys	LockResource(resData Handle) (addr uintptr, err error) = kernel32.LockResource
 
 // Process Status API (PSAPI)
 //sys	EnumProcesses(processIds []uint32, bytesReturned *uint32) (err error) = psapi.EnumProcesses
@@ -1586,56 +1577,4 @@ func (s *UNICODE_STRING) Slice() []uint16 {
 
 func (s *UNICODE_STRING) String() string {
 	return UTF16ToString(s.Slice())
-}
-
-// FindResource resolves a resource of the given name and resource type.
-func FindResource(module Handle, name, resType ResourceIDOrString) (Handle, error) {
-	var namePtr, resTypePtr uintptr
-	var name16, resType16 *uint16
-	var err error
-	resolvePtr := func(i interface{}, keep **uint16) (uintptr, error) {
-		switch v := i.(type) {
-		case string:
-			*keep, err = UTF16PtrFromString(v)
-			if err != nil {
-				return 0, err
-			}
-			return uintptr(unsafe.Pointer(*keep)), nil
-		case ResourceID:
-			return uintptr(v), nil
-		}
-		return 0, errorspkg.New("parameter must be a ResourceID or a string")
-	}
-	namePtr, err = resolvePtr(name, &name16)
-	if err != nil {
-		return 0, err
-	}
-	resTypePtr, err = resolvePtr(resType, &resType16)
-	if err != nil {
-		return 0, err
-	}
-	resInfo, err := findResource(module, namePtr, resTypePtr)
-	runtime.KeepAlive(name16)
-	runtime.KeepAlive(resType16)
-	return resInfo, err
-}
-
-func LoadResourceData(module, resInfo Handle) (data []byte, err error) {
-	size, err := SizeofResource(module, resInfo)
-	if err != nil {
-		return
-	}
-	resData, err := LoadResource(module, resInfo)
-	if err != nil {
-		return
-	}
-	ptr, err := LockResource(resData)
-	if err != nil {
-		return
-	}
-	h := (*unsafeheader.Slice)(unsafe.Pointer(&data))
-	h.Data = unsafe.Pointer(ptr)
-	h.Len = int(size)
-	h.Cap = int(size)
-	return
 }

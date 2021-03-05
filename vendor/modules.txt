@@ -3,11 +3,14 @@ github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/internal/common
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/aus/proxyplease v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/proxyplease v0.1.1-0.20210304025852-a16bce5f30dd
-## explicit
-github.com/aus/proxyplease
+# github.com/bdwyertech/go-get-proxied v0.0.0-20210305205935-912c3d1ded9e
+github.com/bdwyertech/go-get-proxied/proxy
+github.com/bdwyertech/go-get-proxied/winhttp
 # github.com/bdwyertech/go-scutil v0.0.0-20210305044044-814e0f3f0cd3
 github.com/bdwyertech/go-scutil/proxy
+# github.com/bdwyertech/proxyplease v0.1.1-0.20210305210130-a100ce82b827
+## explicit
+github.com/bdwyertech/proxyplease
 # github.com/darren/gpac v0.0.0-20201209040425-3300e0622b93
 github.com/darren/gpac
 # github.com/dlclark/regexp2 v1.2.0
@@ -39,18 +42,15 @@ github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 ## explicit
 github.com/mattn/go-isatty
-# github.com/rapid7/go-get-proxied v0.0.0-20181210221417-16249a544090 => github.com/bdwyertech/go-get-proxied v0.0.0-20210305160813-ca7ca4cda17c
-github.com/rapid7/go-get-proxied/proxy
-github.com/rapid7/go-get-proxied/winhttp
 # github.com/sirupsen/logrus v1.8.0
 ## explicit
 github.com/sirupsen/logrus
-# golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 golang.org/x/crypto/md4
 # golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sys v0.0.0-20210305034016-7844c3c200c3
+# golang.org/x/sys v0.0.0-20210304203840-7b4935edff86
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -73,5 +73,3 @@ golang.org/x/text/unicode/norm
 # h12.io/socks v1.0.2
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
-# github.com/aus/proxyplease => github.com/bdwyertech/proxyplease v0.1.1-0.20210304025852-a16bce5f30dd
-# github.com/rapid7/go-get-proxied => github.com/bdwyertech/go-get-proxied v0.0.0-20210305160813-ca7ca4cda17c

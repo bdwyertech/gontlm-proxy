@@ -12,7 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/aus/proxyplease"
+	"github.com/bdwyertech/proxyplease"
 	"github.com/elazarl/goproxy"
 	// "github.com/bhendo/concord"
 	// "github.com/bhendo/concord/handshakers"

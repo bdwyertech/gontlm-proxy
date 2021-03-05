@@ -26,7 +26,7 @@
 //		package main
 //
 //		import (
-//			"github.com/rapid7/go-get-proxied/proxy"
+//			"github.com/bdwyertech/go-get-proxied/proxy"
 //		)
 //
 //		func main() {

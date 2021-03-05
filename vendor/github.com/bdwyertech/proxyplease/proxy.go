@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	ggp "github.com/rapid7/go-get-proxied/proxy"
+	ggp "github.com/bdwyertech/go-get-proxied/proxy"
 )
 
 // Proxy is a struct that can be passed to NewDialContext. All variables are optional. If a value is nil,
