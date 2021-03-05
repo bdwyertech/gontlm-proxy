@@ -17,11 +17,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
+
+	scutil "github.com/bdwyertech/go-scutil/proxy"
+	"github.com/darren/gpac"
 )
 
 type providerDarwin struct {
@@ -135,7 +141,17 @@ Returns:
 	nil: A proxy was not found, or an error occurred
 */
 func (p *providerDarwin) readDarwinNetworkSettingProxy(protocol string, targetUrl *url.URL) Proxy {
-	proxy, err := p.parseScutildata(protocol, targetUrl, scUtilBinary, scUtilBinaryArgument)
+	proxy, err := p.scutil(protocol, targetUrl)
+	if err == nil {
+		return proxy
+	} else {
+		if isNotFound(err) {
+			log.Println("[proxy.Provider.readDarwinNetworkSettingProxy]: Automatic proxy is not enabled.")
+		} else {
+			log.Printf("[proxy.Provider.readDarwinNetworkSettingProxy]: Failed to parse Scutil data, %s\n", err)
+		}
+	}
+	proxy, err = p.parseScutildata(protocol, targetUrl, scUtilBinary, scUtilBinaryArgument)
 	if err != nil {
 		if isNotFound(err) {
 			log.Printf("[proxy.Provider.readDarwinNetworkSettingProxy]: %s proxy is not enabled.\n", protocol)
@@ -146,6 +162,76 @@ func (p *providerDarwin) readDarwinNetworkSettingProxy(protocol string, targetUr
 		}
 	}
 	return proxy
+}
+
+var scutilOnce sync.Once
+var scutilCfg *scutil.ProxyConfig
+var pacOnce sync.Once
+var pacfile *gpac.Parser
+
+func (p *providerDarwin) scutil(protocol string, targetUrl *url.URL) (Proxy, error) {
+	scutilOnce.Do(func() {
+		cfg, err := scutil.Get()
+		if err != nil {
+			log.Fatal(err)
+		}
+		scutilCfg = &cfg
+	})
+	if scutilCfg == nil {
+		return nil, new(notFoundError)
+	}
+
+	if scutilCfg.ProxyAutoConfigEnable == "1" && scutilCfg.ProxyAutoConfigURLString != "" {
+		pacOnce.Do(func() {
+			resp, err := http.Get(scutilCfg.ProxyAutoConfigURLString)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				bodyBytes, err := io.ReadAll(resp.Body)
+				if err != nil {
+					log.Fatal(err)
+				}
+				pacfile, _ = gpac.New(string(bodyBytes))
+			}
+		})
+
+		pacResp, err := pacfile.FindProxyForURL(targetUrl.String())
+		if err != nil {
+			log.Fatal(err)
+		}
+		// fmt.Println(pacResp) // returns PROXY 127.0.0.1:8080; PROXY 127.0.0.1:8081; DIRECT
+
+		proxies := gpac.ParseProxy(pacResp)
+
+		var direct bool
+		proxyUrl, err := func(pxy *gpac.Proxy) (u *url.URL, err error) {
+			switch pxy.Type {
+			case "DIRECT":
+				direct = true
+				break
+			case "PROXY":
+				u, err = url.Parse(fmt.Sprintf("http://%s", pxy.Address))
+			default:
+				u, err = url.Parse(fmt.Sprintf("%s://%s", strings.ToLower(pxy.Type), pxy.Address))
+			}
+			return
+		}(proxies[0])
+		if err != nil {
+			return nil, err
+		}
+		if direct {
+			return nil, nil
+		}
+
+		proxy, err := NewProxy(proxyUrl, srcScUtil)
+		if err != nil {
+			return nil, err
+		}
+		return proxy, nil
+	}
+	return nil, new(notFoundError)
 }
 
 /*

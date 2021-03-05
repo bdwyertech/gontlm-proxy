@@ -8,11 +8,11 @@ before:
 builds:
   - main: .
     env:
-      - CGO_ENABLED=0
+      # - CGO_ENABLED=0
     goos:
       - windows
       # - linux
-      # - darwin
+      - darwin
     goarch:
       - amd64
     flags:
