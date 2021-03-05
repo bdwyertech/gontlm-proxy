@@ -78,18 +78,18 @@ func Run() {
 	//
 	// Proxy Dialer
 	//
-	dialer := func(network, addr string) (net.Conn, error) {
+	proxy.Tr.DialContext = proxyplease.NewDialContext(proxyplease.Proxy{
+		URL:      proxyUrl,
+		Username: ProxyUser,
+		Password: ProxyPass,
+		Domain:   ProxyDomain,
+	})
+	proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		return proxyplease.NewDialContext(proxyplease.Proxy{
-			URL:      proxyUrl,
-			Username: ProxyUser,
-			Password: ProxyPass,
-			Domain:   ProxyDomain,
-		})(ctx, network, addr)
+		return proxy.Tr.DialContext(ctx, network, addr)
 	}
-	proxy.ConnectDial = dialer
-	proxy.Tr.Dial = dialer
+
 	proxy.Tr.Proxy = nil
 
 	//
