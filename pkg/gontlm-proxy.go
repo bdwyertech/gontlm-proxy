@@ -28,6 +28,10 @@ func init() {
 	flag.BoolVar(&ProxyVerbose, "verbose", false, "Enable verbose logging")
 }
 
+var ProxyUser = os.Getenv("GONTLM_USER")
+var ProxyPass = os.Getenv("GONTLM_PASS")
+var ProxyDomain = os.Getenv("GONTLM_DOMAIN")
+
 func Run() {
 	proxy := goproxy.NewProxyHttpServer()
 	//
@@ -72,16 +76,21 @@ func Run() {
 	}
 
 	//
-	// Dial Context
+	// Proxy Dialer
 	//
-	dialContext := proxyplease.NewDialContext(proxyplease.Proxy{URL: proxyUrl})
-	proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
+	dialer := func(network, addr string) (net.Conn, error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		return dialContext(ctx, network, addr)
+		return proxyplease.NewDialContext(proxyplease.Proxy{
+			URL:      proxyUrl,
+			Username: ProxyUser,
+			Password: ProxyPass,
+			Domain:   ProxyDomain,
+		})(ctx, network, addr)
 	}
+	proxy.ConnectDial = dialer
+	proxy.Tr.Dial = dialer
 	proxy.Tr.Proxy = nil
-	proxy.Tr.DialContext = dialContext
 
 	//
 	// HTTP Handler
