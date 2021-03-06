@@ -12,6 +12,7 @@ require (
 	github.com/bdwyertech/proxyplease v0.1.1-0.20210306012352-4ea051c58b75
 	github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000
 	github.com/kardianos/service v1.2.0
+	github.com/kofalt/go-memoize v0.0.0-20200917044458-9b55a8d73e1c
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.12
 	github.com/sirupsen/logrus v1.8.0

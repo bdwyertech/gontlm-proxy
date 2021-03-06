@@ -14,6 +14,7 @@ import (
 
 	"github.com/bdwyertech/proxyplease"
 	"github.com/elazarl/goproxy"
+	"github.com/kofalt/go-memoize"
 	// "github.com/bhendo/concord"
 	// "github.com/bhendo/concord/handshakers"
 )
@@ -84,20 +85,38 @@ func Run() {
 		Password: ProxyPass,
 		Domain:   ProxyDomain,
 	})
-
-	proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		return proxyplease.NewDialContext(proxyplease.Proxy{
-			URL:       proxyUrl,
-			Username:  ProxyUser,
-			Password:  ProxyPass,
-			Domain:    ProxyDomain,
-			TargetURL: &url.URL{Host: addr},
-		})(ctx, network, addr)
-	}
-
 	proxy.Tr.Proxy = nil
+
+	if proxyUrl != nil {
+		proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			return proxy.Tr.DialContext(ctx, network, addr)
+		}
+	} else {
+		// Memoize PAC lookups for 30 minutes
+		dialerCache := memoize.NewMemoizer(30*time.Minute, 30*time.Minute)
+
+		proxyDialer := func(addr string) proxyplease.DialContext {
+			s, _, _ := dialerCache.Memoize(addr, func() (pxy interface{}, err error) {
+				pxy = proxyplease.NewDialContext(proxyplease.Proxy{
+					Username:  ProxyUser,
+					Password:  ProxyPass,
+					Domain:    ProxyDomain,
+					TargetURL: &url.URL{Host: addr},
+				})
+				return
+			})
+			return s.(proxyplease.DialContext)
+		}
+
+		proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			return proxyDialer(addr)(ctx, network, addr)
+		}
+	}
 
 	//
 	// HTTP Handler
