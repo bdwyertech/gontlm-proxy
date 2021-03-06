@@ -12,25 +12,25 @@ import (
 )
 
 type ProxyConfig struct {
-	ExceptionsList           []string `json:"ExceptionsList,omitempty"`
-	ExcludeSimpleHostnames   string   `json:"ExcludeSimpleHostnames,omitempty"`
-	FTPPassive               string   `json:"FTPPassive,omitempty"`
-	HTTPEnable               string   `json:"HTTPEnable,omitempty"`
+	ExceptionsList           []string `json:"ExceptionsList"`
+	ExcludeSimpleHostnames   string   `json:"ExcludeSimpleHostnames"`
+	FTPPassive               string   `json:"FTPPassive"`
+	HTTPEnable               string   `json:"HTTPEnable"`
 	HTTPPort                 string   `json:"HTTPPort,omitempty"`
 	HTTPProxy                string   `json:"HTTPProxy,omitempty"`
 	HTTPUser                 string   `json:"HTTPUser,omitempty"`
-	HTTPSEnable              string   `json:"HTTPSEnable,omitempty"`
+	HTTPSEnable              string   `json:"HTTPSEnable"`
 	HTTPSPort                string   `json:"HTTPSPort,omitempty"`
 	HTTPSProxy               string   `json:"HTTPSProxy,omitempty"`
 	HTTPSUser                string   `json:"HTTPSUser,omitempty"`
-	ProxyAutoConfigEnable    string   `json:"ProxyAutoConfigEnable,omitempty"`
+	ProxyAutoConfigEnable    string   `json:"ProxyAutoConfigEnable"`
 	ProxyAutoConfigURLString string   `json:"ProxyAutoConfigURLString,omitempty"`
-	ProxyAutoDiscoveryEnable string   `json:"ProxyAutoDiscoveryEnable,omitempty"`
-	RTSPEnable               string   `json:"RTSPEnable,omitempty"`
+	ProxyAutoDiscoveryEnable string   `json:"ProxyAutoDiscoveryEnable"`
+	RTSPEnable               string   `json:"RTSPEnable"`
 	RTSPPort                 string   `json:"RTSPPort,omitempty"`
 	RTSPProxy                string   `json:"RTSPProxy,omitempty"`
 	RTSPUser                 string   `json:"RTSPUser,omitempty"`
-	SOCKSEnable              string   `json:"SOCKSEnable,omitempty"`
+	SOCKSEnable              string   `json:"SOCKSEnable"`
 	SOCKSPort                string   `json:"SOCKSPort,omitempty"`
 	SOCKSProxy               string   `json:"SOCKSProxy,omitempty"`
 	SOCKSUser                string   `json:"SOCKSUser,omitempty"`

@@ -2277,10 +2277,18 @@ type CommTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-type UNICODE_STRING struct {
+// NTUnicodeString is a UTF-16 string for NT native APIs, corresponding to UNICODE_STRING.
+type NTUnicodeString struct {
 	Length        uint16
 	MaximumLength uint16
 	Buffer        *uint16
+}
+
+// NTString is an ANSI string for NT native APIs, corresponding to STRING.
+type NTString struct {
+	Length        uint16
+	MaximumLength uint16
+	Buffer        *byte
 }
 
 type LIST_ENTRY struct {
@@ -2294,7 +2302,7 @@ type LDR_DATA_TABLE_ENTRY struct {
 	reserved2          [2]uintptr
 	DllBase            uintptr
 	reserved3          [2]uintptr
-	FullDllName        UNICODE_STRING
+	FullDllName        NTUnicodeString
 	reserved4          [8]byte
 	reserved5          [3]uintptr
 	reserved6          uintptr
@@ -2307,6 +2315,51 @@ type PEB_LDR_DATA struct {
 	InMemoryOrderModuleList LIST_ENTRY
 }
 
+type CURDIR struct {
+	DosPath NTUnicodeString
+	Handle  Handle
+}
+
+type RTL_DRIVE_LETTER_CURDIR struct {
+	Flags     uint16
+	Length    uint16
+	TimeStamp uint32
+	DosPath   NTString
+}
+
+type RTL_USER_PROCESS_PARAMETERS struct {
+	MaximumLength, Length uint32
+
+	Flags, DebugFlags uint32
+
+	ConsoleHandle                                Handle
+	ConsoleFlags                                 uint32
+	StandardInput, StandardOutput, StandardError Handle
+
+	CurrentDirectory CURDIR
+	DllPath          NTUnicodeString
+	ImagePathName    NTUnicodeString
+	CommandLine      NTUnicodeString
+	Environment      unsafe.Pointer
+
+	StartingX, StartingY, CountX, CountY, CountCharsX, CountCharsY, FillAttribute uint32
+
+	WindowFlags, ShowWindowFlags                     uint32
+	WindowTitle, DesktopInfo, ShellInfo, RuntimeData NTUnicodeString
+	CurrentDirectories                               [32]RTL_DRIVE_LETTER_CURDIR
+
+	EnvironmentSize, EnvironmentVersion uintptr
+
+	PackageDependencyData unsafe.Pointer
+	ProcessGroupId        uint32
+	LoaderThreads         uint32
+
+	RedirectionDllName               NTUnicodeString
+	HeapPartitionName                NTUnicodeString
+	DefaultThreadpoolCpuSetMasks     uintptr
+	DefaultThreadpoolCpuSetMaskCount uint32
+}
+
 type PEB struct {
 	reserved1              [2]byte
 	BeingDebugged          byte
@@ -2314,7 +2367,7 @@ type PEB struct {
 	reserved3              uintptr
 	ImageBaseAddress       uintptr
 	Ldr                    *PEB_LDR_DATA
-	ProcessParameters      uintptr
+	ProcessParameters      *RTL_USER_PROCESS_PARAMETERS
 	reserved4              [3]uintptr
 	AtlThunkSListPtr       uintptr
 	reserved5              uintptr
@@ -2333,7 +2386,7 @@ type PEB struct {
 type OBJECT_ATTRIBUTES struct {
 	Length             uint32
 	RootDirectory      Handle
-	ObjectName         *UNICODE_STRING
+	ObjectName         *NTUnicodeString
 	Attributes         uint32
 	SecurityDescriptor *SECURITY_DESCRIPTOR
 	SecurityQoS        *SECURITY_QUALITY_OF_SERVICE
@@ -2365,7 +2418,7 @@ type RTLP_CURDIR_REF struct {
 }
 
 type RTL_RELATIVE_NAME struct {
-	RelativeName        UNICODE_STRING
+	RelativeName        NTUnicodeString
 	ContainingDirectory Handle
 	CurDirRef           *RTLP_CURDIR_REF
 }
@@ -2470,7 +2523,7 @@ const (
 	ProcessHandleTracing
 	ProcessIoPriority
 	ProcessExecuteFlags
-	ProcessResourceManagement
+	ProcessTlsInformation
 	ProcessCookie
 	ProcessImageInformation
 	ProcessCycleTime
@@ -2545,8 +2598,8 @@ type PROCESS_BASIC_INFORMATION struct {
 	PebBaseAddress               *PEB
 	AffinityMask                 uintptr
 	BasePriority                 int32
-	UniqueProcessId              Handle
-	InheritedFromUniqueProcessId Handle
+	UniqueProcessId              uintptr
+	InheritedFromUniqueProcessId uintptr
 }
 
 // Constants for LocalAlloc flags.
@@ -2600,3 +2653,119 @@ const (
 	SECURITY_SQOS_PRESENT     = 0x100000
 	SECURITY_VALID_SQOS_FLAGS = 0x1f0000
 )
+
+// ResourceID represents a 16-bit resource identifier, traditionally created with the MAKEINTRESOURCE macro.
+type ResourceID uint16
+
+// ResourceIDOrString must be either a ResourceID, to specify a resource or resource type by ID,
+// or a string, to specify a resource or resource type by name.
+type ResourceIDOrString interface{}
+
+// Predefined resource names and types.
+var (
+	// Predefined names.
+	CREATEPROCESS_MANIFEST_RESOURCE_ID                 ResourceID = 1
+	ISOLATIONAWARE_MANIFEST_RESOURCE_ID                ResourceID = 2
+	ISOLATIONAWARE_NOSTATICIMPORT_MANIFEST_RESOURCE_ID ResourceID = 3
+	ISOLATIONPOLICY_MANIFEST_RESOURCE_ID               ResourceID = 4
+	ISOLATIONPOLICY_BROWSER_MANIFEST_RESOURCE_ID       ResourceID = 5
+	MINIMUM_RESERVED_MANIFEST_RESOURCE_ID              ResourceID = 1  // inclusive
+	MAXIMUM_RESERVED_MANIFEST_RESOURCE_ID              ResourceID = 16 // inclusive
+
+	// Predefined types.
+	RT_CURSOR       ResourceID = 1
+	RT_BITMAP       ResourceID = 2
+	RT_ICON         ResourceID = 3
+	RT_MENU         ResourceID = 4
+	RT_DIALOG       ResourceID = 5
+	RT_STRING       ResourceID = 6
+	RT_FONTDIR      ResourceID = 7
+	RT_FONT         ResourceID = 8
+	RT_ACCELERATOR  ResourceID = 9
+	RT_RCDATA       ResourceID = 10
+	RT_MESSAGETABLE ResourceID = 11
+	RT_GROUP_CURSOR ResourceID = 12
+	RT_GROUP_ICON   ResourceID = 14
+	RT_VERSION      ResourceID = 16
+	RT_DLGINCLUDE   ResourceID = 17
+	RT_PLUGPLAY     ResourceID = 19
+	RT_VXD          ResourceID = 20
+	RT_ANICURSOR    ResourceID = 21
+	RT_ANIICON      ResourceID = 22
+	RT_HTML         ResourceID = 23
+	RT_MANIFEST     ResourceID = 24
+)
+
+type COAUTHIDENTITY struct {
+	User           *uint16
+	UserLength     uint32
+	Domain         *uint16
+	DomainLength   uint32
+	Password       *uint16
+	PasswordLength uint32
+	Flags          uint32
+}
+
+type COAUTHINFO struct {
+	AuthnSvc           uint32
+	AuthzSvc           uint32
+	ServerPrincName    *uint16
+	AuthnLevel         uint32
+	ImpersonationLevel uint32
+	AuthIdentityData   *COAUTHIDENTITY
+	Capabilities       uint32
+}
+
+type COSERVERINFO struct {
+	Reserved1 uint32
+	Aame      *uint16
+	AuthInfo  *COAUTHINFO
+	Reserved2 uint32
+}
+
+type BIND_OPTS3 struct {
+	CbStruct          uint32
+	Flags             uint32
+	Mode              uint32
+	TickCountDeadline uint32
+	TrackFlags        uint32
+	ClassContext      uint32
+	Locale            uint32
+	ServerInfo        *COSERVERINFO
+	Hwnd              HWND
+}
+
+const (
+	CLSCTX_INPROC_SERVER          = 0x1
+	CLSCTX_INPROC_HANDLER         = 0x2
+	CLSCTX_LOCAL_SERVER           = 0x4
+	CLSCTX_INPROC_SERVER16        = 0x8
+	CLSCTX_REMOTE_SERVER          = 0x10
+	CLSCTX_INPROC_HANDLER16       = 0x20
+	CLSCTX_RESERVED1              = 0x40
+	CLSCTX_RESERVED2              = 0x80
+	CLSCTX_RESERVED3              = 0x100
+	CLSCTX_RESERVED4              = 0x200
+	CLSCTX_NO_CODE_DOWNLOAD       = 0x400
+	CLSCTX_RESERVED5              = 0x800
+	CLSCTX_NO_CUSTOM_MARSHAL      = 0x1000
+	CLSCTX_ENABLE_CODE_DOWNLOAD   = 0x2000
+	CLSCTX_NO_FAILURE_LOG         = 0x4000
+	CLSCTX_DISABLE_AAA            = 0x8000
+	CLSCTX_ENABLE_AAA             = 0x10000
+	CLSCTX_FROM_DEFAULT_CONTEXT   = 0x20000
+	CLSCTX_ACTIVATE_32_BIT_SERVER = 0x40000
+	CLSCTX_ACTIVATE_64_BIT_SERVER = 0x80000
+	CLSCTX_ENABLE_CLOAKING        = 0x100000
+	CLSCTX_APPCONTAINER           = 0x400000
+	CLSCTX_ACTIVATE_AAA_AS_IU     = 0x800000
+	CLSCTX_PS_DLL                 = 0x80000000
+
+	COINIT_MULTITHREADED     = 0x0
+	COINIT_APARTMENTTHREADED = 0x2
+	COINIT_DISABLE_OLE1DDE   = 0x4
+	COINIT_SPEED_OVER_MEMORY = 0x8
+)
+
+// Flag for QueryFullProcessImageName.
+const PROCESS_NAME_NATIVE = 1

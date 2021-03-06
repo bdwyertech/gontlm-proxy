@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -198,6 +199,21 @@ func (p *providerDarwin) scutil(protocol string, targetUrl *url.URL) (Proxy, err
 			}
 		})
 
+		for _, exc := range scutilCfg.ExceptionsList {
+			_, ipNet, err := net.ParseCIDR(exc)
+			if err == nil {
+				if ipNet.Contains(net.ParseIP(targetUrl.Hostname())) {
+					log.Printf("[proxy.Provider.parseProxyInfo]: ProxyBypass=\"%s\", targetUrl=%s, bypass=%t", exc, targetUrl, true)
+					return nil, nil
+				}
+			}
+
+			if strings.HasSuffix(targetUrl.Hostname(), strings.Trim(exc, "*")) {
+				log.Printf("[proxy.Provider.parseProxyInfo]: ProxyBypass=\"%s\", targetUrl=%s, bypass=%t", exc, targetUrl, true)
+				return nil, nil
+			}
+		}
+
 		pacResp, err := pacfile.FindProxyForURL(targetUrl.String())
 		if err != nil {
 			log.Fatal(err)
@@ -211,7 +227,6 @@ func (p *providerDarwin) scutil(protocol string, targetUrl *url.URL) (Proxy, err
 			switch pxy.Type {
 			case "DIRECT":
 				direct = true
-				break
 			case "PROXY":
 				u, err = url.Parse(fmt.Sprintf("http://%s", pxy.Address))
 			default:

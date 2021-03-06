@@ -3,12 +3,12 @@ github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/internal/common
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/bdwyertech/go-get-proxied v0.0.0-20210305205935-912c3d1ded9e
+# github.com/bdwyertech/go-get-proxied v0.0.0-20210306011937-d6f5e733b0a8
 github.com/bdwyertech/go-get-proxied/proxy
 github.com/bdwyertech/go-get-proxied/winhttp
-# github.com/bdwyertech/go-scutil v0.0.0-20210305044044-814e0f3f0cd3
+# github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
 github.com/bdwyertech/go-scutil/proxy
-# github.com/bdwyertech/proxyplease v0.1.1-0.20210305210130-a100ce82b827
+# github.com/bdwyertech/proxyplease v0.1.1-0.20210306012352-4ea051c58b75
 ## explicit
 github.com/bdwyertech/proxyplease
 # github.com/darren/gpac v0.0.0-20201209040425-3300e0622b93
@@ -50,7 +50,7 @@ golang.org/x/crypto/md4
 # golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sys v0.0.0-20210304203840-7b4935edff86
+# golang.org/x/sys v0.0.0-20210305230114-8fe3ee5dd75b
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
