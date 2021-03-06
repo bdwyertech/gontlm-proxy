@@ -32,6 +32,7 @@ func init() {
 var ProxyUser = os.Getenv("GONTLM_USER")
 var ProxyPass = os.Getenv("GONTLM_PASS")
 var ProxyDomain = os.Getenv("GONTLM_DOMAIN")
+var ProxyOverrides *map[string]*url.URL
 
 func Run() {
 	proxy := goproxy.NewProxyHttpServer()
@@ -76,46 +77,62 @@ func Run() {
 		log.Infof("Forwarding Proxy is: %s", proxyUrl.Redacted())
 	}
 
+	// Memoize DialContexts for 30 minutes
+	dialerCache := memoize.NewMemoizer(30*time.Minute, 30*time.Minute)
+
+	proxyDialer := func(addr string, purl *url.URL) proxyplease.DialContext {
+		cacheKey := addr
+		if purl != nil && purl.Host != "" {
+			cacheKey = purl.Host
+		}
+		s, _, _ := dialerCache.Memoize(cacheKey, func() (pxy interface{}, err error) {
+			pxy = proxyplease.NewDialContext(proxyplease.Proxy{
+				URL:       purl,
+				Username:  ProxyUser,
+				Password:  ProxyPass,
+				Domain:    ProxyDomain,
+				TargetURL: &url.URL{Host: addr},
+			})
+			return
+		})
+		return s.(proxyplease.DialContext)
+	}
+
 	//
 	// Proxy Dialer
 	//
-	proxy.Tr.DialContext = proxyplease.NewDialContext(proxyplease.Proxy{
-		URL:      proxyUrl,
-		Username: ProxyUser,
-		Password: ProxyPass,
-		Domain:   ProxyDomain,
-	})
 	proxy.Tr.Proxy = nil
+	proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 
-	if proxyUrl != nil {
-		proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			return proxy.Tr.DialContext(ctx, network, addr)
-		}
-	} else {
-		// Memoize PAC lookups for 30 minutes
-		dialerCache := memoize.NewMemoizer(30*time.Minute, 30*time.Minute)
-
-		proxyDialer := func(addr string) proxyplease.DialContext {
-			s, _, _ := dialerCache.Memoize(addr, func() (pxy interface{}, err error) {
-				pxy = proxyplease.NewDialContext(proxyplease.Proxy{
-					Username:  ProxyUser,
-					Password:  ProxyPass,
-					Domain:    ProxyDomain,
-					TargetURL: &url.URL{Host: addr},
-				})
-				return
-			})
-			return s.(proxyplease.DialContext)
+		if ProxyOverrides != nil {
+			if pxy, ok := (*ProxyOverrides)[addr]; ok {
+				if pxy == nil {
+					d := net.Dialer{}
+					return d.DialContext(ctx, network, addr)
+				}
+				return proxyDialer(addr, pxy)(ctx, network, addr)
+			}
 		}
 
-		proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+		return proxyDialer(addr, proxyUrl)(ctx, network, addr)
+	}
 
-			return proxyDialer(addr)(ctx, network, addr)
+	// HTTPS
+	proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		if ProxyOverrides != nil {
+			if pxy, ok := (*ProxyOverrides)[addr]; ok {
+				if pxy == nil {
+					d := net.Dialer{}
+					return d.DialContext(ctx, network, addr)
+				}
+				return proxyDialer(addr, pxy)(ctx, network, addr)
+			}
 		}
+
+		return proxyDialer(addr, proxyUrl)(ctx, network, addr)
 	}
 
 	//
