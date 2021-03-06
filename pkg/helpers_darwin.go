@@ -25,7 +25,9 @@ func getProxyServer() (proxyServer string) {
 	if scutilCfg.ProxyAutoConfigEnable == "1" && scutilCfg.ProxyAutoConfigURLString != "" {
 		// Ensure we use PAC over Proxy ENV variables in ProxyPlease
 		os.Unsetenv("HTTP_PROXY")
+		os.Unsetenv("http_proxy")
 		os.Unsetenv("HTTPS_PROXY")
+		os.Unsetenv("https_proxy")
 		log.Infoln("Using Proxy Auto-Configuration (PAC) file:", scutilCfg.ProxyAutoConfigURLString)
 		return
 	}
