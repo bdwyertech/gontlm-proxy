@@ -1,4 +1,4 @@
-// +build !windows
+// +build !darwin,!windows
 
 package ntlm_proxy
 

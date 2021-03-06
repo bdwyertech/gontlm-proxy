@@ -9,6 +9,7 @@ replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200
 // replace github.com/rapid7/go-get-proxied => ../go-get-proxied
 
 require (
+	github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
 	github.com/bdwyertech/proxyplease v0.1.1-0.20210306012352-4ea051c58b75
 	github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000
 	github.com/kardianos/service v1.2.0

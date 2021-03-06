@@ -7,6 +7,7 @@ github.com/alexbrainman/sspi/ntlm
 github.com/bdwyertech/go-get-proxied/proxy
 github.com/bdwyertech/go-get-proxied/winhttp
 # github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
+## explicit
 github.com/bdwyertech/go-scutil/proxy
 # github.com/bdwyertech/proxyplease v0.1.1-0.20210306012352-4ea051c58b75
 ## explicit
