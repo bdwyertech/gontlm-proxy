@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	// "regexp"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -80,14 +81,24 @@ func Run() {
 	// Memoize DialContexts for 30 minutes
 	dialerCache := memoize.NewMemoizer(30*time.Minute, 30*time.Minute)
 
-	proxyDialer := func(addr string, purl *url.URL) proxyplease.DialContext {
+	proxyDialer := func(addr string, pxyUrl *url.URL) proxyplease.DialContext {
 		cacheKey := addr
-		if purl != nil && purl.Host != "" {
-			cacheKey = purl.Host
+		if pxyUrl != nil && pxyUrl.Host != "" {
+			cacheKey = strings.Split(pxyUrl.Host, ":")[0]
 		}
-		s, _, _ := dialerCache.Memoize(cacheKey, func() (pxy interface{}, err error) {
-			pxy = proxyplease.NewDialContext(proxyplease.Proxy{
-				URL:       purl,
+		s, _, _ := dialerCache.Memoize(cacheKey, func() (pxyCtx interface{}, err error) {
+			if ProxyOverrides != nil {
+				if pxy, ok := (*ProxyOverrides)[addr]; ok {
+					if pxy == nil {
+						d := net.Dialer{}
+						return d.DialContext, nil
+					}
+					pxyUrl = pxy
+				}
+			}
+
+			pxyCtx = proxyplease.NewDialContext(proxyplease.Proxy{
+				URL:       pxyUrl,
 				Username:  ProxyUser,
 				Password:  ProxyPass,
 				Domain:    ProxyDomain,
@@ -99,21 +110,12 @@ func Run() {
 	}
 
 	//
-	// Proxy Dialer
+	// Proxy DialContexts
 	//
 	proxy.Tr.Proxy = nil
+
+	// HTTP
 	proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-
-		if ProxyOverrides != nil {
-			if pxy, ok := (*ProxyOverrides)[addr]; ok {
-				if pxy == nil {
-					d := net.Dialer{}
-					return d.DialContext(ctx, network, addr)
-				}
-				return proxyDialer(addr, pxy)(ctx, network, addr)
-			}
-		}
-
 		return proxyDialer(addr, proxyUrl)(ctx, network, addr)
 	}
 
@@ -121,16 +123,6 @@ func Run() {
 	proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-
-		if ProxyOverrides != nil {
-			if pxy, ok := (*ProxyOverrides)[addr]; ok {
-				if pxy == nil {
-					d := net.Dialer{}
-					return d.DialContext(ctx, network, addr)
-				}
-				return proxyDialer(addr, pxy)(ctx, network, addr)
-			}
-		}
 
 		return proxyDialer(addr, proxyUrl)(ctx, network, addr)
 	}
