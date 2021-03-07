@@ -87,10 +87,10 @@ func Run() {
 			cacheKey = pxyUrl.Host
 		}
 
-		s, _, _ := dialerCache.Memoize(cacheKey, func() (pxyCtx interface{}, err error) {
+		dctx, _, _ := dialerCache.Memoize(cacheKey, func() (pxyCtx interface{}, err error) {
 			if ProxyOverrides != nil {
-				for _, s := range []string{addr, strings.Split(addr, ":")[0]} {
-					if pxy, ok := (*ProxyOverrides)[strings.ToLower(s)]; ok {
+				for _, host := range []string{addr, strings.Split(addr, ":")[0]} {
+					if pxy, ok := (*ProxyOverrides)[strings.ToLower(host)]; ok {
 						if pxy == nil {
 							d := net.Dialer{}
 							return d.DialContext, nil
@@ -109,7 +109,7 @@ func Run() {
 			})
 			return
 		})
-		return s.(proxyplease.DialContext)
+		return dctx.(proxyplease.DialContext)
 	}
 
 	//
