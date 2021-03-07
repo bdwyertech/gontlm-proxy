@@ -83,17 +83,20 @@ func Run() {
 
 	proxyDialer := func(addr string, pxyUrl *url.URL) proxyplease.DialContext {
 		cacheKey := addr
-		if pxyUrl != nil && pxyUrl.Host != "" {
-			cacheKey = strings.Split(pxyUrl.Host, ":")[0]
+		if pxyUrl != nil && pxyUrl.Host != "" && ProxyOverrides == nil {
+			cacheKey = pxyUrl.Host
 		}
+
 		s, _, _ := dialerCache.Memoize(cacheKey, func() (pxyCtx interface{}, err error) {
 			if ProxyOverrides != nil {
-				if pxy, ok := (*ProxyOverrides)[addr]; ok {
-					if pxy == nil {
-						d := net.Dialer{}
-						return d.DialContext, nil
+				for _, s := range []string{addr, strings.Split(addr, ":")[0]} {
+					if pxy, ok := (*ProxyOverrides)[strings.ToLower(s)]; ok {
+						if pxy == nil {
+							d := net.Dialer{}
+							return d.DialContext, nil
+						}
+						pxyUrl = pxy
 					}
-					pxyUrl = pxy
 				}
 			}
 
