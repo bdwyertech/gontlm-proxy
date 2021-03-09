@@ -81,7 +81,7 @@ func Run() {
 	// Memoize DialContexts for 30 minutes
 	dialerCache := memoize.NewMemoizer(30*time.Minute, 30*time.Minute)
 
-	proxyDialer := func(addr string, pxyUrl *url.URL) proxyplease.DialContext {
+	proxyDialer := func(scheme, addr string, pxyUrl *url.URL) proxyplease.DialContext {
 		cacheKey := addr
 		if pxyUrl != nil && pxyUrl.Host != "" && ProxyOverrides == nil {
 			cacheKey = pxyUrl.Host
@@ -105,7 +105,7 @@ func Run() {
 				Username:  ProxyUser,
 				Password:  ProxyPass,
 				Domain:    ProxyDomain,
-				TargetURL: &url.URL{Host: addr},
+				TargetURL: &url.URL{Host: addr, Scheme: scheme},
 			})
 			return
 		})
@@ -119,7 +119,7 @@ func Run() {
 
 	// HTTP
 	proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		return proxyDialer(addr, proxyUrl)(ctx, network, addr)
+		return proxyDialer("http", addr, proxyUrl)(ctx, network, addr)
 	}
 
 	// HTTPS
@@ -127,7 +127,7 @@ func Run() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		return proxyDialer(addr, proxyUrl)(ctx, network, addr)
+		return proxyDialer("https", addr, proxyUrl)(ctx, network, addr)
 	}
 
 	//
