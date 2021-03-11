@@ -16,6 +16,7 @@ import (
 	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/bdwyertech/proxyplease"
 	"github.com/elazarl/goproxy"
+	"golang.org/x/sync/singleflight"
 	// "github.com/bhendo/concord"
 	// "github.com/bhendo/concord/handshakers"
 )
@@ -83,8 +84,9 @@ func Run() {
 	//
 	dialerCache := ttlcache.NewCache()
 	dialerCache.SetTTL(time.Duration(30 * time.Minute))
+	dialerCacheGroup := singleflight.Group{}
 
-	proxyDialer := func(scheme, addr string, pxyUrl *url.URL) (pxyCtx proxyplease.DialContext) {
+	proxyDialer := func(scheme, addr string, pxyUrl *url.URL) proxyplease.DialContext {
 		cacheKey := addr
 		if pxyUrl != nil && pxyUrl.Host != "" && ProxyOverrides == nil {
 			cacheKey = pxyUrl.Host
@@ -94,29 +96,36 @@ func Run() {
 			return dctx.(proxyplease.DialContext)
 		}
 
-		if ProxyOverrides != nil {
-			for _, host := range []string{addr, strings.Split(addr, ":")[0]} {
-				if pxy, ok := (*ProxyOverrides)[strings.ToLower(host)]; ok {
-					if pxy == nil {
-						d := net.Dialer{}
-						return d.DialContext
+		dctx, err, _ := dialerCacheGroup.Do(cacheKey, func() (pxyCtx interface{}, err error) {
+			if ProxyOverrides != nil {
+				for _, host := range []string{addr, strings.Split(addr, ":")[0]} {
+					if pxy, ok := (*ProxyOverrides)[strings.ToLower(host)]; ok {
+						if pxy == nil {
+							d := net.Dialer{}
+							return d.DialContext, nil
+						}
+						pxyUrl = pxy
 					}
-					pxyUrl = pxy
 				}
 			}
+
+			pxyCtx = proxyplease.NewDialContext(proxyplease.Proxy{
+				URL:       pxyUrl,
+				Username:  ProxyUser,
+				Password:  ProxyPass,
+				Domain:    ProxyDomain,
+				TargetURL: &url.URL{Host: addr, Scheme: scheme},
+			})
+
+			err = dialerCache.Set(cacheKey, pxyCtx)
+
+			return
+		})
+		if err != nil {
+			log.Fatal(err)
 		}
 
-		pxyCtx = proxyplease.NewDialContext(proxyplease.Proxy{
-			URL:       pxyUrl,
-			Username:  ProxyUser,
-			Password:  ProxyPass,
-			Domain:    ProxyDomain,
-			TargetURL: &url.URL{Host: addr, Scheme: scheme},
-		})
-
-		dialerCache.Set(cacheKey, pxyCtx)
-
-		return
+		return dctx.(proxyplease.DialContext)
 	}
 
 	//

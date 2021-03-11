@@ -17,5 +17,6 @@ require (
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.12
 	github.com/sirupsen/logrus v1.8.1
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	golang.org/x/sys v0.0.0-20210305230114-8fe3ee5dd75b
 )
