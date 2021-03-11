@@ -1,3 +1,6 @@
+# github.com/ReneKroon/ttlcache/v2 v2.3.0
+## explicit
+github.com/ReneKroon/ttlcache/v2
 # github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74
 github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/internal/common
@@ -32,23 +35,15 @@ github.com/go-sourcemap/sourcemap/internal/base64vlq
 # github.com/kardianos/service v1.2.0
 ## explicit
 github.com/kardianos/service
-# github.com/kofalt/go-memoize v0.0.0-20200917044458-9b55a8d73e1c
-## explicit
-github.com/kofalt/go-memoize
 # github.com/launchdarkly/go-ntlmssp v1.0.1
 github.com/launchdarkly/go-ntlmssp
-# github.com/magefile/mage v1.10.0
-github.com/magefile/mage/mg
-github.com/magefile/mage/sh
 # github.com/mattn/go-colorable v0.1.8
 ## explicit
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 ## explicit
 github.com/mattn/go-isatty
-# github.com/patrickmn/go-cache v2.1.0+incompatible
-github.com/patrickmn/go-cache
-# github.com/sirupsen/logrus v1.8.0
+# github.com/sirupsen/logrus v1.8.1
 ## explicit
 github.com/sirupsen/logrus
 # golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
@@ -56,8 +51,6 @@ golang.org/x/crypto/md4
 # golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-golang.org/x/sync/singleflight
 # golang.org/x/sys v0.0.0-20210305230114-8fe3ee5dd75b
 ## explicit
 golang.org/x/sys/internal/unsafeheader

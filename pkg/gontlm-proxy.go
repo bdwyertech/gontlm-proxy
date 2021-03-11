@@ -13,9 +13,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/bdwyertech/proxyplease"
 	"github.com/elazarl/goproxy"
-	"github.com/kofalt/go-memoize"
 	// "github.com/bhendo/concord"
 	// "github.com/bhendo/concord/handshakers"
 )
@@ -78,38 +78,45 @@ func Run() {
 		log.Infof("Forwarding Proxy is: %s", proxyUrl.Redacted())
 	}
 
-	// Memoize DialContexts for 30 minutes
-	dialerCache := memoize.NewMemoizer(30*time.Minute, 30*time.Minute)
+	//
+	// LRU Cache: Memoize DialContexts for 30 minutes
+	//
+	dialerCache := ttlcache.NewCache()
+	dialerCache.SetTTL(time.Duration(30 * time.Minute))
 
-	proxyDialer := func(scheme, addr string, pxyUrl *url.URL) proxyplease.DialContext {
+	proxyDialer := func(scheme, addr string, pxyUrl *url.URL) (pxyCtx proxyplease.DialContext) {
 		cacheKey := addr
 		if pxyUrl != nil && pxyUrl.Host != "" && ProxyOverrides == nil {
 			cacheKey = pxyUrl.Host
 		}
 
-		dctx, _, _ := dialerCache.Memoize(cacheKey, func() (pxyCtx interface{}, err error) {
-			if ProxyOverrides != nil {
-				for _, host := range []string{addr, strings.Split(addr, ":")[0]} {
-					if pxy, ok := (*ProxyOverrides)[strings.ToLower(host)]; ok {
-						if pxy == nil {
-							d := net.Dialer{}
-							return d.DialContext, nil
-						}
-						pxyUrl = pxy
+		if dctx, err := dialerCache.Get(cacheKey); err == nil {
+			return dctx.(proxyplease.DialContext)
+		}
+
+		if ProxyOverrides != nil {
+			for _, host := range []string{addr, strings.Split(addr, ":")[0]} {
+				if pxy, ok := (*ProxyOverrides)[strings.ToLower(host)]; ok {
+					if pxy == nil {
+						d := net.Dialer{}
+						return d.DialContext
 					}
+					pxyUrl = pxy
 				}
 			}
+		}
 
-			pxyCtx = proxyplease.NewDialContext(proxyplease.Proxy{
-				URL:       pxyUrl,
-				Username:  ProxyUser,
-				Password:  ProxyPass,
-				Domain:    ProxyDomain,
-				TargetURL: &url.URL{Host: addr, Scheme: scheme},
-			})
-			return
+		pxyCtx = proxyplease.NewDialContext(proxyplease.Proxy{
+			URL:       pxyUrl,
+			Username:  ProxyUser,
+			Password:  ProxyPass,
+			Domain:    ProxyDomain,
+			TargetURL: &url.URL{Host: addr, Scheme: scheme},
 		})
-		return dctx.(proxyplease.DialContext)
+
+		dialerCache.Set(cacheKey, pxyCtx)
+
+		return
 	}
 
 	//
