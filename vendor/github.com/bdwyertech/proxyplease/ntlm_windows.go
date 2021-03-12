@@ -115,6 +115,7 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		debugf("ntlm> Could not read authenticate response from proxy: %s", err)
 		return conn, err
 	}
+	resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
 		debugf("ntlm> Successfully injected NTLM to connection")

@@ -81,15 +81,15 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		return conn, err
 	}
 
-	h = p.Headers.Clone()
-	h.Set("Proxy-Authorization", fmt.Sprintf("NTLM %s", base64.StdEncoding.EncodeToString(authBytes)))
-	h.Set("Proxy-Connection", "Keep-Alive")
-	connect = &http.Request{
-		Method: "CONNECT",
-		URL:    &url.URL{Opaque: addr},
-		Host:   addr,
-		Header: h,
+	// Rewind the request body, the handshake needs it
+	if connect.GetBody != nil {
+		if connect.Body, err = connect.GetBody(); err != nil {
+			return conn, err
+		}
 	}
+
+	connect.Header.Set("Proxy-Authorization", fmt.Sprintf("NTLM %s", base64.StdEncoding.EncodeToString(authBytes)))
+
 	if err := connect.WriteProxy(conn); err != nil {
 		debugf("ntlm> Could not write authenticate message to proxy: %s", err)
 		return conn, err
@@ -100,6 +100,7 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		debugf("ntlm> Could not read authenticate response from proxy: %s", err)
 		return conn, err
 	}
+	resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
 		debugf("ntlm> Successfully injected NTLM to connection")
@@ -108,5 +109,4 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 
 	debugf("ntlm> Expected %d as return status, got: %d", http.StatusOK, resp.StatusCode)
 	return conn, errors.New(http.StatusText(resp.StatusCode))
-
 }
