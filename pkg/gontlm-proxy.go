@@ -35,6 +35,7 @@ var ProxyUser = os.Getenv("GONTLM_USER")
 var ProxyPass = os.Getenv("GONTLM_PASS")
 var ProxyDomain = os.Getenv("GONTLM_DOMAIN")
 var ProxyOverrides *map[string]*url.URL
+var ProxyDialerCacheTimeout = 60 * time.Minute
 
 func Run() {
 	proxy := goproxy.NewProxyHttpServer()
@@ -80,10 +81,10 @@ func Run() {
 	}
 
 	//
-	// LRU Cache: Memoize DialContexts for 30 minutes
+	// LRU Cache: Memoize DialContexts for 60 minutes
 	//
 	dialerCache := ttlcache.NewCache()
-	dialerCache.SetTTL(time.Duration(30 * time.Minute))
+	dialerCache.SetTTL(ProxyDialerCacheTimeout)
 	dialerCacheGroup := singleflight.Group{}
 
 	proxyDialer := func(scheme, addr string, pxyUrl *url.URL) proxyplease.DialContext {
