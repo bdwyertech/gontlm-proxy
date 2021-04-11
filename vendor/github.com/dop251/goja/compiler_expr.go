@@ -2,10 +2,12 @@ package goja
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja/file"
 	"github.com/dop251/goja/token"
-	"regexp"
+	"github.com/dop251/goja/unistring"
 )
 
 var (
@@ -14,7 +16,7 @@ var (
 
 type compiledExpr interface {
 	emitGetter(putOnStack bool)
-	emitSetter(valueExpr compiledExpr)
+	emitSetter(valueExpr compiledExpr, putOnStack bool)
 	emitUnary(prepare, body func(), postfix, putOnStack bool)
 	deleteExpr() compiledExpr
 	constant() bool
@@ -60,18 +62,18 @@ type compiledAssignExpr struct {
 
 type deleteGlobalExpr struct {
 	baseCompiledExpr
-	name string
+	name unistring.String
 }
 
 type deleteVarExpr struct {
 	baseCompiledExpr
-	name string
+	name unistring.String
 }
 
 type deletePropExpr struct {
 	baseCompiledExpr
 	left compiledExpr
-	name string
+	name unistring.String
 }
 
 type deleteElemExpr struct {
@@ -91,13 +93,15 @@ type baseCompiledExpr struct {
 
 type compiledIdentifierExpr struct {
 	baseCompiledExpr
-	name string
+	name unistring.String
 }
 
 type compiledFunctionLiteral struct {
 	baseCompiledExpr
-	expr   *ast.FunctionLiteral
-	isExpr bool
+	expr    *ast.FunctionLiteral
+	lhsName unistring.String
+	isExpr  bool
+	strict  bool
 }
 
 type compiledBracketExpr struct {
@@ -113,6 +117,10 @@ type compiledNewExpr struct {
 	baseCompiledExpr
 	callee compiledExpr
 	args   []compiledExpr
+}
+
+type compiledNewTarget struct {
+	baseCompiledExpr
 }
 
 type compiledSequenceExpr struct {
@@ -150,9 +158,8 @@ type compiledBinaryExpr struct {
 
 type compiledVariableExpr struct {
 	baseCompiledExpr
-	name        string
+	name        unistring.String
 	initializer compiledExpr
-	expr        *ast.VariableExpression
 }
 
 type compiledEnumGetExpr struct {
@@ -232,6 +239,8 @@ func (c *compiler) compileExpression(v ast.Expression) compiledExpr {
 		return c.compileSequenceExpression(v)
 	case *ast.NewExpression:
 		return c.compileNewExpression(v)
+	case *ast.MetaProperty:
+		return c.compileMetaProperty(v)
 	default:
 		panic(fmt.Errorf("Unknown expression type: %T", v))
 	}
@@ -246,7 +255,7 @@ func (e *baseCompiledExpr) init(c *compiler, idx file.Idx) {
 	e.offset = int(idx) - 1
 }
 
-func (e *baseCompiledExpr) emitSetter(valueExpr compiledExpr) {
+func (e *baseCompiledExpr) emitSetter(compiledExpr, bool) {
 	e.c.throwSyntaxError(e.offset, "Not a valid left-value expression")
 }
 
@@ -258,7 +267,7 @@ func (e *baseCompiledExpr) deleteExpr() compiledExpr {
 	return r
 }
 
-func (e *baseCompiledExpr) emitUnary(prepare, body func(), postfix bool, putOnStack bool) {
+func (e *baseCompiledExpr) emitUnary(func(), func(), bool, bool) {
 	e.c.throwSyntaxError(e.offset, "Not a valid left-value expression")
 }
 
@@ -277,19 +286,21 @@ func (e *constantExpr) emitGetter(putOnStack bool) {
 
 func (e *compiledIdentifierExpr) emitGetter(putOnStack bool) {
 	e.addSrcMap()
-	if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
-		if found {
+	if b, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
+		if b != nil {
 			if putOnStack {
-				e.c.emit(getLocal(idx))
+				b.emitGet()
+			} else {
+				b.emitGetP()
 			}
 		} else {
 			panic("No dynamics and not found")
 		}
 	} else {
-		if found {
-			e.c.emit(getVar{name: e.name, idx: idx})
+		if b != nil {
+			b.emitGetVar(false)
 		} else {
-			e.c.emit(getVar1(e.name))
+			e.c.emit(loadDynamic(e.name))
 		}
 		if !putOnStack {
 			e.c.emit(pop)
@@ -299,89 +310,98 @@ func (e *compiledIdentifierExpr) emitGetter(putOnStack bool) {
 
 func (e *compiledIdentifierExpr) emitGetterOrRef() {
 	e.addSrcMap()
-	if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
-		if found {
-			e.c.emit(getLocal(idx))
+	if b, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
+		if b != nil {
+			b.emitGet()
 		} else {
 			panic("No dynamics and not found")
 		}
 	} else {
-		if found {
-			e.c.emit(getVar{name: e.name, idx: idx, ref: true})
+		if b != nil {
+			b.emitGetVar(false)
 		} else {
-			e.c.emit(getVar1Ref(e.name))
+			e.c.emit(loadDynamicRef(e.name))
 		}
 	}
 }
 
 func (e *compiledIdentifierExpr) emitGetterAndCallee() {
 	e.addSrcMap()
-	if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
-		if found {
+	if b, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
+		if b != nil {
 			e.c.emit(loadUndef)
-			e.c.emit(getLocal(idx))
+			b.emitGet()
 		} else {
 			panic("No dynamics and not found")
 		}
 	} else {
-		if found {
-			e.c.emit(getVar{name: e.name, idx: idx, ref: true, callee: true})
+		if b != nil {
+			b.emitGetVar(true)
 		} else {
-			e.c.emit(getVar1Callee(e.name))
+			e.c.emit(loadDynamicCallee(e.name))
 		}
 	}
 }
 
-func (c *compiler) emitVarSetter1(name string, offset int, emitRight func(isRef bool)) {
+func (c *compiler) emitVarSetter1(name unistring.String, offset int, putOnStack bool, emitRight func(isRef bool)) {
 	if c.scope.strict {
 		c.checkIdentifierLName(name, offset)
 	}
 
-	if idx, found, noDynamics := c.scope.lookupName(name); noDynamics {
+	if b, noDynamics := c.scope.lookupName(name); noDynamics {
 		emitRight(false)
-		if found {
-			c.emit(setLocal(idx))
+		if b != nil {
+			if putOnStack {
+				b.emitSet()
+			} else {
+				b.emitSetP()
+			}
 		} else {
 			if c.scope.strict {
 				c.emit(setGlobalStrict(name))
 			} else {
 				c.emit(setGlobal(name))
 			}
+			if !putOnStack {
+				c.emit(pop)
+			}
 		}
 	} else {
-		if found {
-			c.emit(resolveVar{name: name, idx: idx, strict: c.scope.strict})
-			emitRight(true)
-			c.emit(putValue)
+		if b != nil {
+			b.emitResolveVar(c.scope.strict)
 		} else {
 			if c.scope.strict {
 				c.emit(resolveVar1Strict(name))
 			} else {
 				c.emit(resolveVar1(name))
 			}
-			emitRight(true)
+		}
+		emitRight(true)
+		if putOnStack {
 			c.emit(putValue)
+		} else {
+			c.emit(putValueP)
 		}
 	}
 }
 
-func (c *compiler) emitVarSetter(name string, offset int, valueExpr compiledExpr) {
-	c.emitVarSetter1(name, offset, func(bool) {
+func (c *compiler) emitVarSetter(name unistring.String, offset int, valueExpr compiledExpr, putOnStack bool) {
+	c.emitVarSetter1(name, offset, putOnStack, func(bool) {
 		c.emitExpr(valueExpr, true)
 	})
 }
 
-func (e *compiledVariableExpr) emitSetter(valueExpr compiledExpr) {
-	e.c.emitVarSetter(e.name, e.offset, valueExpr)
+func (e *compiledVariableExpr) emitSetter(valueExpr compiledExpr, putOnStack bool) {
+	e.c.emitVarSetter(e.name, e.offset, valueExpr, putOnStack)
 }
 
-func (e *compiledIdentifierExpr) emitSetter(valueExpr compiledExpr) {
-	e.c.emitVarSetter(e.name, e.offset, valueExpr)
+func (e *compiledIdentifierExpr) emitSetter(valueExpr compiledExpr, putOnStack bool) {
+	e.c.emitVarSetter(e.name, e.offset, valueExpr, putOnStack)
 }
 
 func (e *compiledIdentifierExpr) emitUnary(prepare, body func(), postfix, putOnStack bool) {
 	if putOnStack {
-		e.c.emitVarSetter1(e.name, e.offset, func(isRef bool) {
+		e.c.emitVarSetter1(e.name, e.offset, true, func(isRef bool) {
 			e.c.emit(loadUndef)
 			if isRef {
 				e.c.emit(getValue)
@@ -401,7 +421,7 @@ func (e *compiledIdentifierExpr) emitUnary(prepare, body func(), postfix, putOnS
 		})
 		e.c.emit(pop)
 	} else {
-		e.c.emitVarSetter1(e.name, e.offset, func(isRef bool) {
+		e.c.emitVarSetter1(e.name, e.offset, false, func(isRef bool) {
 			if isRef {
 				e.c.emit(getValue)
 			} else {
@@ -409,7 +429,6 @@ func (e *compiledIdentifierExpr) emitUnary(prepare, body func(), postfix, putOnS
 			}
 			body()
 		})
-		e.c.emit(pop)
 	}
 }
 
@@ -418,33 +437,34 @@ func (e *compiledIdentifierExpr) deleteExpr() compiledExpr {
 		e.c.throwSyntaxError(e.offset, "Delete of an unqualified identifier in strict mode")
 		panic("Unreachable")
 	}
-	if _, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
-		if !found {
+	if b, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
+		if b == nil {
 			r := &deleteGlobalExpr{
 				name: e.name,
 			}
 			r.init(e.c, file.Idx(0))
 			return r
-		} else {
-			r := &constantExpr{
-				val: valueFalse,
-			}
-			r.init(e.c, file.Idx(0))
-			return r
 		}
 	} else {
-		r := &deleteVarExpr{
-			name: e.name,
+		if b == nil {
+			r := &deleteVarExpr{
+				name: e.name,
+			}
+			r.init(e.c, file.Idx(e.offset+1))
+			return r
 		}
-		r.init(e.c, file.Idx(e.offset+1))
-		return r
 	}
+	r := &compiledLiteral{
+		val: valueFalse,
+	}
+	r.init(e.c, file.Idx(e.offset+1))
+	return r
 }
 
 type compiledDotExpr struct {
 	baseCompiledExpr
 	left compiledExpr
-	name string
+	name unistring.String
 }
 
 func (e *compiledDotExpr) emitGetter(putOnStack bool) {
@@ -456,13 +476,21 @@ func (e *compiledDotExpr) emitGetter(putOnStack bool) {
 	}
 }
 
-func (e *compiledDotExpr) emitSetter(valueExpr compiledExpr) {
+func (e *compiledDotExpr) emitSetter(valueExpr compiledExpr, putOnStack bool) {
 	e.left.emitGetter(true)
 	valueExpr.emitGetter(true)
 	if e.c.scope.strict {
-		e.c.emit(setPropStrict(e.name))
+		if putOnStack {
+			e.c.emit(setPropStrict(e.name))
+		} else {
+			e.c.emit(setPropStrictP(e.name))
+		}
 	} else {
-		e.c.emit(setProp(e.name))
+		if putOnStack {
+			e.c.emit(setProp(e.name))
+		} else {
+			e.c.emit(setPropP(e.name))
+		}
 	}
 }
 
@@ -530,14 +558,22 @@ func (e *compiledBracketExpr) emitGetter(putOnStack bool) {
 	}
 }
 
-func (e *compiledBracketExpr) emitSetter(valueExpr compiledExpr) {
+func (e *compiledBracketExpr) emitSetter(valueExpr compiledExpr, putOnStack bool) {
 	e.left.emitGetter(true)
 	e.member.emitGetter(true)
 	valueExpr.emitGetter(true)
 	if e.c.scope.strict {
-		e.c.emit(setElemStrict)
+		if putOnStack {
+			e.c.emit(setElemStrict)
+		} else {
+			e.c.emit(setElemStrictP)
+		}
 	} else {
-		e.c.emit(setElem)
+		if putOnStack {
+			e.c.emit(setElem)
+		} else {
+			e.c.emit(setElemP)
+		}
 	}
 }
 
@@ -651,78 +687,71 @@ func (e *compiledAssignExpr) emitGetter(putOnStack bool) {
 	e.addSrcMap()
 	switch e.operator {
 	case token.ASSIGN:
-		e.left.emitSetter(e.right)
+		if fn, ok := e.right.(*compiledFunctionLiteral); ok {
+			if fn.expr.Name == nil {
+				if id, ok := e.left.(*compiledIdentifierExpr); ok {
+					fn.lhsName = id.name
+				}
+			}
+		}
+		e.left.emitSetter(e.right, putOnStack)
 	case token.PLUS:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(add)
 		}, false, putOnStack)
-		return
 	case token.MINUS:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(sub)
 		}, false, putOnStack)
-		return
 	case token.MULTIPLY:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(mul)
 		}, false, putOnStack)
-		return
 	case token.SLASH:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(div)
 		}, false, putOnStack)
-		return
 	case token.REMAINDER:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(mod)
 		}, false, putOnStack)
-		return
 	case token.OR:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(or)
 		}, false, putOnStack)
-		return
 	case token.AND:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(and)
 		}, false, putOnStack)
-		return
 	case token.EXCLUSIVE_OR:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(xor)
 		}, false, putOnStack)
-		return
 	case token.SHIFT_LEFT:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(sal)
 		}, false, putOnStack)
-		return
 	case token.SHIFT_RIGHT:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(sar)
 		}, false, putOnStack)
-		return
 	case token.UNSIGNED_SHIFT_RIGHT:
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(shr)
 		}, false, putOnStack)
-		return
 	default:
 		panic(fmt.Errorf("Unknown assign operator: %s", e.operator.String()))
-	}
-	if !putOnStack {
-		e.c.emit(pop)
 	}
 }
 
@@ -738,31 +767,37 @@ func (e *compiledLiteral) constant() bool {
 }
 
 func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
-	e.c.newScope()
-	savedBlockStart := e.c.blockStart
 	savedPrg := e.c.p
 	e.c.p = &Program{
 		src: e.c.p.src,
 	}
-	e.c.blockStart = 0
+	e.c.newScope()
+	e.c.scope.function = true
 
+	var name unistring.String
 	if e.expr.Name != nil {
-		e.c.p.funcName = e.expr.Name.Name
+		name = e.expr.Name.Name
+	} else {
+		name = e.lhsName
 	}
-	block := e.c.block
-	e.c.block = nil
+
+	if name != "" {
+		e.c.p.funcName = name
+	}
+	savedBlock := e.c.block
 	defer func() {
-		e.c.block = block
+		e.c.block = savedBlock
 	}()
 
+	e.c.block = &block{
+		typ: blockScope,
+	}
+
 	if !e.c.scope.strict {
-		e.c.scope.strict = e.c.isStrictStatement(e.expr.Body)
+		e.c.scope.strict = e.strict
 	}
 
 	if e.c.scope.strict {
-		if e.expr.Name != nil {
-			e.c.checkIdentifierLName(e.expr.Name.Name, int(e.expr.Name.Idx)-1)
-		}
 		for _, item := range e.expr.ParameterList.List {
 			e.c.checkIdentifierName(item.Name, int(item.Idx)-1)
 			e.c.checkIdentifierLName(item.Name, int(item.Idx)-1)
@@ -772,149 +807,150 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 	length := len(e.expr.ParameterList.List)
 
 	for _, item := range e.expr.ParameterList.List {
-		_, unique := e.c.scope.bindNameShadow(item.Name)
+		b, unique := e.c.scope.bindNameShadow(item.Name)
 		if !unique && e.c.scope.strict {
 			e.c.throwSyntaxError(int(item.Idx)-1, "Strict mode function may not have duplicate parameter names (%s)", item.Name)
 			return
 		}
+		b.isArg = true
+		b.isVar = true
 	}
-	paramsCount := len(e.c.scope.names)
+	paramsCount := len(e.c.scope.bindings)
+	e.c.scope.numArgs = paramsCount
 	e.c.compileDeclList(e.expr.DeclarationList, true)
-	var needCallee bool
-	var calleeIdx uint32
+	body := e.expr.Body.List
+	funcs := e.c.extractFunctions(body)
+	e.c.createFunctionBindings(funcs)
+	s := e.c.scope
+	e.c.compileLexicalDeclarations(body, true)
+	var calleeBinding *binding
 	if e.isExpr && e.expr.Name != nil {
-		if idx, ok := e.c.scope.bindName(e.expr.Name.Name); ok {
-			calleeIdx = idx
-			needCallee = true
+		if b, created := s.bindName(e.expr.Name.Name); created {
+			calleeBinding = b
 		}
 	}
-	maxPreambleLen := 2
-	e.c.p.code = make([]instruction, maxPreambleLen)
-	if needCallee {
-		e.c.emit(loadCallee, setLocalP(calleeIdx))
+	preambleLen := 4 // enter, boxThis, createArgs, set
+	e.c.p.code = make([]instruction, preambleLen, 8)
+
+	if calleeBinding != nil {
+		e.c.emit(loadCallee)
+		calleeBinding.emitSetP()
 	}
 
-	e.c.compileFunctions(e.expr.DeclarationList)
-	e.c.markBlockStart()
-	e.c.compileStatement(e.expr.Body, false)
+	e.c.compileFunctions(funcs)
+	e.c.compileStatements(body, false)
 
-	if e.c.blockStart >= len(e.c.p.code)-1 || e.c.p.code[len(e.c.p.code)-1] != ret {
+	var last ast.Statement
+	if l := len(body); l > 0 {
+		last = body[l-1]
+	}
+	if _, ok := last.(*ast.ReturnStatement); !ok {
 		e.c.emit(loadUndef, ret)
 	}
 
-	if !e.c.scope.dynamic && !e.c.scope.accessed {
-		// log.Printf("Function can use inline stash")
-		l := 0
-		if !e.c.scope.strict && e.c.scope.thisNeeded {
-			l = 2
-			e.c.p.code = e.c.p.code[maxPreambleLen-2:]
-			e.c.p.code[1] = boxThis
-		} else {
-			l = 1
-			e.c.p.code = e.c.p.code[maxPreambleLen-1:]
-		}
-		e.c.convertFunctionToStashless(e.c.p.code, paramsCount)
-		for i := range e.c.p.srcMap {
-			e.c.p.srcMap[i].pc -= maxPreambleLen - l
-		}
-	} else {
-		l := 1 + len(e.c.scope.names)
-		if e.c.scope.argsNeeded {
-			l += 2
-		}
-		if !e.c.scope.strict && e.c.scope.thisNeeded {
-			l++
-		}
+	delta := 0
+	code := e.c.p.code
 
-		code := make([]instruction, l+len(e.c.p.code)-maxPreambleLen)
-		code[0] = enterFunc(length)
-		for name, nameIdx := range e.c.scope.names {
-			code[nameIdx+1] = bindName(name)
-		}
-		pos := 1 + len(e.c.scope.names)
-
-		if !e.c.scope.strict && e.c.scope.thisNeeded {
-			code[pos] = boxThis
-			pos++
-		}
-
-		if e.c.scope.argsNeeded {
-			if e.c.scope.strict {
-				code[pos] = createArgsStrict(length)
-			} else {
-				code[pos] = createArgs(length)
-			}
-			pos++
-			idx, exists := e.c.scope.names["arguments"]
-			if !exists {
-				panic("No arguments")
-			}
-			code[pos] = setLocalP(idx)
-			pos++
-		}
-
-		copy(code[l:], e.c.p.code[maxPreambleLen:])
-		e.c.p.code = code
-		for i := range e.c.p.srcMap {
-			e.c.p.srcMap[i].pc += l - maxPreambleLen
-		}
+	if calleeBinding != nil && !s.isDynamic() && calleeBinding.useCount() == 1 {
+		s.deleteBinding(calleeBinding)
+		preambleLen += 2
 	}
 
-	strict := e.c.scope.strict
+	if (s.argsNeeded || s.isDynamic()) && !s.argsInStash {
+		s.moveArgsToStash()
+	}
+
+	if s.argsNeeded {
+		pos := preambleLen - 2
+		delta += 2
+		if s.strict {
+			code[pos] = createArgsStrict(length)
+		} else {
+			code[pos] = createArgs(length)
+		}
+		pos++
+		b, _ := s.bindName("arguments")
+		e.c.p.code = code[:pos]
+		b.emitSetP()
+		e.c.p.code = code
+	}
+
+	stashSize, stackSize := s.finaliseVarAlloc(0)
+
+	if !s.strict && s.thisNeeded {
+		delta++
+		code[preambleLen-delta] = boxThis
+	}
+	delta++
+	delta = preambleLen - delta
+	var enter instruction
+	if stashSize > 0 || s.argsInStash {
+		enter1 := enterFunc{
+			numArgs:     uint32(paramsCount),
+			argsToStash: s.argsInStash,
+			stashSize:   uint32(stashSize),
+			stackSize:   uint32(stackSize),
+			extensible:  s.dynamic,
+		}
+		if s.isDynamic() {
+			enter1.names = s.makeNamesMap()
+		}
+		enter = &enter1
+	} else {
+		enter = &enterFuncStashless{
+			stackSize: uint32(stackSize),
+			args:      uint32(paramsCount),
+		}
+	}
+	code[delta] = enter
+	if delta != 0 {
+		e.c.p.code = code[delta:]
+		for i := range e.c.p.srcMap {
+			e.c.p.srcMap[i].pc -= delta
+		}
+		s.adjustBase(-delta)
+	}
+
+	strict := s.strict
 	p := e.c.p
 	// e.c.p.dumpCode()
 	e.c.popScope()
 	e.c.p = savedPrg
-	e.c.blockStart = savedBlockStart
-	name := ""
-	if e.expr.Name != nil {
-		name = e.expr.Name.Name
-	}
 	e.c.emit(&newFunc{prg: p, length: uint32(length), name: name, srcStart: uint32(e.expr.Idx0() - 1), srcEnd: uint32(e.expr.Idx1() - 1), strict: strict})
 	if !putOnStack {
 		e.c.emit(pop)
 	}
 }
 
-func (c *compiler) compileFunctionLiteral(v *ast.FunctionLiteral, isExpr bool) compiledExpr {
-	if v.Name != nil && c.scope.strict {
+func (c *compiler) compileFunctionLiteral(v *ast.FunctionLiteral, isExpr bool) *compiledFunctionLiteral {
+	strict := c.scope.strict || c.isStrictStatement(v.Body)
+	if v.Name != nil && strict {
 		c.checkIdentifierLName(v.Name.Name, int(v.Name.Idx)-1)
 	}
 	r := &compiledFunctionLiteral{
 		expr:   v,
 		isExpr: isExpr,
+		strict: strict,
 	}
 	r.init(c, v.Idx0())
 	return r
 }
 
-func nearestNonLexical(s *scope) *scope {
-	for ; s != nil && s.lexical; s = s.outer {
-	}
-	return s
-}
-
 func (e *compiledThisExpr) emitGetter(putOnStack bool) {
 	if putOnStack {
 		e.addSrcMap()
-		if e.c.scope.eval || e.c.scope.isFunction() {
-			nearestNonLexical(e.c.scope).thisNeeded = true
+		scope := e.c.scope
+		for ; scope != nil && !scope.function && !scope.eval; scope = scope.outer {
+		}
+
+		if scope != nil {
+			scope.thisNeeded = true
 			e.c.emit(loadStack(0))
 		} else {
 			e.c.emit(loadGlobalObject)
 		}
 	}
 }
-
-/*
-func (e *compiledThisExpr) deleteExpr() compiledExpr {
-	r := &compiledLiteral{
-		val: valueTrue,
-	}
-	r.init(e.c, 0)
-	return r
-}
-*/
 
 func (e *compiledNewExpr) emitGetter(putOnStack bool) {
 	e.callee.emitGetter(true)
@@ -939,6 +975,23 @@ func (c *compiler) compileNewExpression(v *ast.NewExpression) compiledExpr {
 	}
 	r.init(c, v.Idx0())
 	return r
+}
+
+func (e *compiledNewTarget) emitGetter(putOnStack bool) {
+	if putOnStack {
+		e.addSrcMap()
+		e.c.emit(loadNewTarget)
+	}
+}
+
+func (c *compiler) compileMetaProperty(v *ast.MetaProperty) compiledExpr {
+	if v.Meta.Name == "new" || v.Property.Name != "target" {
+		r := &compiledNewTarget{}
+		r.init(c, v.Idx0())
+		return r
+	}
+	c.throwSyntaxError(int(v.Idx)-1, "Unsupported meta property: %s.%s", v.Meta.Name, v.Property.Name)
+	return nil
 }
 
 func (e *compiledSequenceExpr) emitGetter(putOnStack bool) {
@@ -968,11 +1021,11 @@ func (c *compiler) compileSequenceExpression(v *ast.SequenceExpression) compiled
 
 func (c *compiler) emitThrow(v Value) {
 	if o, ok := v.(*Object); ok {
-		t := o.self.getStr("name").String()
+		t := nilSafe(o.self.getStr("name", nil)).toString().String()
 		switch t {
 		case "TypeError":
-			c.emit(getVar1(t))
-			msg := o.self.getStr("message")
+			c.emit(loadDynamic(t))
+			msg := o.self.getStr("message", nil)
 			if msg != nil {
 				c.emit(loadVal(c.p.defineLiteralValue(msg)))
 				c.emit(_new(1))
@@ -983,7 +1036,7 @@ func (c *compiler) emitThrow(v Value) {
 			return
 		}
 	}
-	panic(fmt.Errorf("Unknown exception type thrown while evaliating constant expression: %s", v.String()))
+	panic(fmt.Errorf("unknown exception type thrown while evaliating constant expression: %s", v.String()))
 }
 
 func (c *compiler) emitConst(expr compiledExpr, putOnStack bool) {
@@ -1170,7 +1223,6 @@ func (e *compiledLogicalOr) emitGetter(putOnStack bool) {
 		return
 	}
 	e.c.emitExpr(e.left, true)
-	e.c.markBlockStart()
 	j := len(e.c.p.code)
 	e.addSrcMap()
 	e.c.emit(nil)
@@ -1213,7 +1265,6 @@ func (e *compiledLogicalAnd) emitGetter(putOnStack bool) {
 		return
 	}
 	e.left.emitGetter(true)
-	e.c.markBlockStart()
 	j = len(e.c.p.code)
 	e.addSrcMap()
 	e.c.emit(nil)
@@ -1328,10 +1379,7 @@ func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
 			name: e.name,
 		}
 		idExpr.init(e.c, file.Idx(0))
-		idExpr.emitSetter(e.initializer)
-		if !putOnStack {
-			e.c.emit(pop)
-		}
+		idExpr.emitSetter(e.initializer, putOnStack)
 	} else {
 		if putOnStack {
 			e.c.emit(loadUndef)
@@ -1344,6 +1392,9 @@ func (c *compiler) compileVariableExpression(v *ast.VariableExpression) compiled
 		name:        v.Name,
 		initializer: c.compileExpression(v.Initializer),
 	}
+	if fn, ok := r.initializer.(*compiledFunctionLiteral); ok {
+		fn.lhsName = v.Name
+	}
 	r.init(c, v.Idx0())
 	return r
 }
@@ -1352,20 +1403,34 @@ func (e *compiledObjectLiteral) emitGetter(putOnStack bool) {
 	e.addSrcMap()
 	e.c.emit(newObject)
 	for _, prop := range e.expr.Value {
-		e.c.compileExpression(prop.Value).emitGetter(true)
+		keyExpr := e.c.compileExpression(prop.Key)
+		cl, ok := keyExpr.(*compiledLiteral)
+		if !ok {
+			e.c.throwSyntaxError(e.offset, "non-literal properties in object literal are not supported yet")
+		}
+		key := cl.val.string()
+		valueExpr := e.c.compileExpression(prop.Value)
+		if fn, ok := valueExpr.(*compiledFunctionLiteral); ok {
+			if fn.expr.Name == nil {
+				fn.lhsName = key
+			}
+		}
+		valueExpr.emitGetter(true)
 		switch prop.Kind {
 		case "value":
-			if prop.Key == __proto__ {
+			if key == __proto__ {
 				e.c.emit(setProto)
 			} else {
-				e.c.emit(setProp1(prop.Key))
+				e.c.emit(setProp1(key))
 			}
+		case "method":
+			e.c.emit(setProp1(key))
 		case "get":
-			e.c.emit(setPropGetter(prop.Key))
+			e.c.emit(setPropGetter(key))
 		case "set":
-			e.c.emit(setPropSetter(prop.Key))
+			e.c.emit(setPropSetter(key))
 		default:
-			panic(fmt.Errorf("Unknown property kind: %s", prop.Kind))
+			panic(fmt.Errorf("unknown property kind: %s", prop.Kind))
 		}
 	}
 	if !putOnStack {
@@ -1383,14 +1448,23 @@ func (c *compiler) compileObjectLiteral(v *ast.ObjectLiteral) compiledExpr {
 
 func (e *compiledArrayLiteral) emitGetter(putOnStack bool) {
 	e.addSrcMap()
+	objCount := 0
 	for _, v := range e.expr.Value {
 		if v != nil {
 			e.c.compileExpression(v).emitGetter(true)
+			objCount++
 		} else {
 			e.c.emit(loadNil)
 		}
 	}
-	e.c.emit(newArray(len(e.expr.Value)))
+	if objCount == len(e.expr.Value) {
+		e.c.emit(newArray(objCount))
+	} else {
+		e.c.emit(&newArraySparse{
+			l:        len(e.expr.Value),
+			objCount: objCount,
+		})
+	}
 	if !putOnStack {
 		e.c.emit(pop)
 	}
@@ -1406,17 +1480,12 @@ func (c *compiler) compileArrayLiteral(v *ast.ArrayLiteral) compiledExpr {
 
 func (e *compiledRegexpLiteral) emitGetter(putOnStack bool) {
 	if putOnStack {
-		pattern, global, ignoreCase, multiline, err := compileRegexp(e.expr.Pattern, e.expr.Flags)
+		pattern, err := compileRegexp(e.expr.Pattern, e.expr.Flags)
 		if err != nil {
 			e.c.throwSyntaxError(e.offset, err.Error())
 		}
 
-		e.c.emit(&newRegexp{pattern: pattern,
-			src:        newStringValue(e.expr.Pattern),
-			global:     global,
-			ignoreCase: ignoreCase,
-			multiline:  multiline,
-		})
+		e.c.emit(&newRegexp{pattern: pattern, src: newStringValue(e.expr.Pattern)})
 	}
 }
 
@@ -1429,7 +1498,7 @@ func (c *compiler) compileRegexpLiteral(v *ast.RegExpLiteral) compiledExpr {
 }
 
 func (e *compiledCallExpr) emitGetter(putOnStack bool) {
-	var calleeName string
+	var calleeName unistring.String
 	switch callee := e.callee.(type) {
 	case *compiledDotExpr:
 		callee.left.emitGetter(true)
@@ -1454,12 +1523,18 @@ func (e *compiledCallExpr) emitGetter(putOnStack bool) {
 
 	e.addSrcMap()
 	if calleeName == "eval" {
-		e.c.scope.dynamic = true
-		e.c.scope.thisNeeded = true
-		if e.c.scope.lexical {
-			e.c.scope.outer.dynamic = true
+		foundFunc := false
+		for sc := e.c.scope; sc != nil; sc = sc.outer {
+			if !foundFunc && sc.function {
+				foundFunc = true
+				sc.thisNeeded, sc.argsNeeded = true, true
+				if !sc.strict {
+					sc.dynamic = true
+				}
+			}
+			sc.dynLookup = true
 		}
-		e.c.scope.accessed = true
+
 		if e.c.scope.strict {
 			e.c.emit(callEvalStrict(len(e.args)))
 		} else {
@@ -1533,7 +1608,7 @@ func (c *compiler) compileNumberLiteral(v *ast.NumberLiteral) compiledExpr {
 
 func (c *compiler) compileStringLiteral(v *ast.StringLiteral) compiledExpr {
 	r := &compiledLiteral{
-		val: newStringValue(v.Value),
+		val: stringValueFromRaw(v.Value),
 	}
 	r.init(c, v.Idx0())
 	return r
