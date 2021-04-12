@@ -6,15 +6,13 @@ before:
     # - go mod tidy
     # - go generate ./...
 builds:
-  - &build
-    id: windows
-    main: .
+  - main: .
     env:
       # - CGO_ENABLED=0
     goos:
       - windows
       # - linux
-      # - darwin
+      - darwin
     goarch:
       - amd64
     flags:
@@ -24,13 +22,6 @@ builds:
       - -X github.com/bdwyertech/gontlm-proxy/cmd.GitCommit={{.ShortCommit}}
       - -X github.com/bdwyertech/gontlm-proxy/cmd.ReleaseVer={{.Version}}
       - -X github.com/bdwyertech/gontlm-proxy/cmd.ReleaseDate={{.Date}}
-
-  - <<: *build
-    id: darwin
-    goos:
-      - darwin
-    env:
-      - CGO_ENABLED=1 # CGO Required for proper DNS resolution
 
 archives:
   - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
