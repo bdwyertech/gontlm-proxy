@@ -188,13 +188,14 @@ func Run() {
 	// })
 
 	srv := &http.Server{
-		Addr:        bind.Host,
 		Handler:     proxy,
 		IdleTimeout: time.Second * 60,
 	}
-
-	log.Fatal(srv.ListenAndServe())
-
+	listener, err := net.Listen("tcp4", bind.Host)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Fatal(srv.Serve(listener))
 }
 
 // Check if it is a WebSocketUpgrade
