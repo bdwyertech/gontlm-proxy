@@ -1,6 +1,7 @@
 package ttlcache
 
 import (
+	"golang.org/x/sync/singleflight"
 	"sync"
 	"time"
 )
@@ -18,12 +19,23 @@ type ExpireReasonCallback func(key string, reason EvictionReason, value interfac
 // LoaderFunction can be supplied to retrieve an item where a cache miss occurs. Supply an item specific ttl or Duration.Zero
 type LoaderFunction func(key string) (data interface{}, ttl time.Duration, err error)
 
+// SimpleCache interface enables a quick-start. Interface for basic usage.
+type SimpleCache interface {
+	Get(key string) (interface{}, error)
+	Set(key string, data interface{}) error
+	SetTTL(ttl time.Duration) error
+	SetWithTTL(key string, data interface{}, ttl time.Duration) error
+	Remove(key string) error
+	Close() error
+	Purge() error
+}
+
 // Cache is a synchronized map of items that can auto-expire once stale
 type Cache struct {
 	mutex                  sync.Mutex
 	ttl                    time.Duration
 	items                  map[string]*item
-	loaderLock             map[string]*sync.Cond
+	loaderLock             *singleflight.Group
 	expireCallback         ExpireCallback
 	expireReasonCallback   ExpireReasonCallback
 	checkExpireCallback    CheckExpireCallback
@@ -266,6 +278,11 @@ func (cache *Cache) SetWithTTL(key string, data interface{}, ttl time.Duration) 
 // Get is a thread-safe way to lookup items
 // Every lookup, also touches the item, hence extending it's life
 func (cache *Cache) Get(key string) (interface{}, error) {
+	return cache.GetByLoader(key, nil)
+}
+
+// GetByLoader can take a per key loader function (ie. to propagate context)
+func (cache *Cache) GetByLoader(key string, customLoaderFunction LoaderFunction) (interface{}, error) {
 	cache.mutex.Lock()
 	if cache.isShutDown {
 		cache.mutex.Unlock()
@@ -286,38 +303,23 @@ func (cache *Cache) Get(key string) (interface{}, error) {
 		cache.metrics.Misses++
 		err = ErrNotFound
 	}
-	if cache.loaderFunction == nil || exists {
+
+	loaderFunction := cache.loaderFunction
+	if customLoaderFunction != nil {
+		loaderFunction = customLoaderFunction
+	}
+
+	if loaderFunction == nil || exists {
 		cache.mutex.Unlock()
 	}
 
-	if cache.loaderFunction != nil && !exists {
-		if lock, ok := cache.loaderLock[key]; ok {
-			// if a lock is present then a fetch is in progress and we wait.
-			cache.mutex.Unlock()
-			lock.L.Lock()
-			lock.Wait()
-			lock.L.Unlock()
-			cache.mutex.Lock()
-			item, exists, triggerExpirationNotification = cache.getItem(key)
-			if exists {
-				dataToReturn = item.data
-				err = nil
-			}
-			cache.mutex.Unlock()
-		} else {
-			// if no lock is present we are the leader and should set the lock and fetch.
-			m := sync.NewCond(&sync.Mutex{})
-			cache.loaderLock[key] = m
-			cache.mutex.Unlock()
-			// cache is not blocked during IO
-			dataToReturn, err = cache.invokeLoader(key)
-			cache.mutex.Lock()
-			m.Broadcast()
-			// cleanup so that we don't block consecutive access.
-			delete(cache.loaderLock, key)
-			cache.mutex.Unlock()
-		}
-
+	if loaderFunction != nil && !exists {
+		cache.mutex.Unlock()
+		dataToReturn, err, _ = cache.loaderLock.Do(key, func() (interface{}, error) {
+			// cache is not blocked during io
+			invokeData, err := cache.invokeLoader(key, loaderFunction)
+			return invokeData, err
+		})
 	}
 
 	if triggerExpirationNotification {
@@ -327,10 +329,10 @@ func (cache *Cache) Get(key string) (interface{}, error) {
 	return dataToReturn, err
 }
 
-func (cache *Cache) invokeLoader(key string) (dataToReturn interface{}, err error) {
+func (cache *Cache) invokeLoader(key string, loaderFunction LoaderFunction) (dataToReturn interface{}, err error) {
 	var ttl time.Duration
 
-	dataToReturn, ttl, err = cache.loaderFunction(key)
+	dataToReturn, ttl, err = loaderFunction(key)
 	if err == nil {
 		err = cache.SetWithTTL(key, dataToReturn, ttl)
 		if err != nil {
@@ -461,7 +463,7 @@ func NewCache() *Cache {
 
 	cache := &Cache{
 		items:                  make(map[string]*item),
-		loaderLock:             make(map[string]*sync.Cond),
+		loaderLock:             &singleflight.Group{},
 		priorityQueue:          newPriorityQueue(),
 		expirationNotification: make(chan bool),
 		expirationTime:         time.Now(),
