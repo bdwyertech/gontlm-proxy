@@ -1,4 +1,4 @@
-# github.com/ReneKroon/ttlcache/v2 v2.4.0
+# github.com/ReneKroon/ttlcache/v2 v2.6.0
 ## explicit
 github.com/ReneKroon/ttlcache/v2
 # github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74
@@ -54,7 +54,7 @@ golang.org/x/crypto/md4
 # golang.org/x/net v0.0.0-20210410081132-afb366fc7cd1
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
+# golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 ## explicit
 golang.org/x/sync/singleflight
 # golang.org/x/sys v0.0.0-20210403161142-5e06dd20ab57
