@@ -1,6 +1,6 @@
 github.com/ReneKroon/ttlcache/v2 v2.4.0/go.mod h1:zbo6Pv/28e21Z8CzzqgYRArQYGYtjONRxaAKGxzQvG4=
-github.com/ReneKroon/ttlcache/v2 v2.6.0 h1:Dr/73htBYDr8LRqpDBmslBDr6pAwtgSBQMoPmU3b9ms=
-github.com/ReneKroon/ttlcache/v2 v2.6.0/go.mod h1:mBxvsNY+BT8qLLd6CuAJubbKo6r0jh3nb5et22bbfGY=
+github.com/ReneKroon/ttlcache/v2 v2.7.0 h1:sZeaSwA2UN/y/h7CvkW15Kovd2Oiy76CBDORiOwHPwI=
+github.com/ReneKroon/ttlcache/v2 v2.7.0/go.mod h1:mBxvsNY+BT8qLLd6CuAJubbKo6r0jh3nb5et22bbfGY=
 github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74 h1:Kk6a4nehpJ3UuJRqlA3JxYxBZEqCeOmATOvrbT4p9RA=
 github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74/go.mod h1:cEWa1LVoE5KvSD9ONXsZrj0z6KqySlCCNKHlLzbqAt4=
 github.com/alvaroloes/enumer v1.1.2/go.mod h1:FxrjvuXoDAx9isTJrv4c+T410zFi0DtXIT0m65DJ+Wo=
