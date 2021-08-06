@@ -73,7 +73,7 @@ func (p *Parser) Do(req *http.Request) (*http.Response, error) {
 
 	proxies := ParseProxy(ps)
 	if len(proxies) == 0 {
-		return nil, errors.New("No Proxies found")
+		return nil, errors.New("no proxies found")
 	}
 
 	for _, proxy := range proxies {
@@ -82,7 +82,7 @@ func (p *Parser) Do(req *http.Request) (*http.Response, error) {
 			return resp, nil
 		}
 	}
-	return nil, errors.New("No request via proxies succeeds")
+	return nil, errors.New("no request via proxies succeeds")
 }
 
 // Source returns the original javascript snippet of the pac

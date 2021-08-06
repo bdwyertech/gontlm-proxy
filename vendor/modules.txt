@@ -6,21 +6,21 @@ github.com/alexbrainman/sspi
 github.com/alexbrainman/sspi/internal/common
 github.com/alexbrainman/sspi/negotiate
 github.com/alexbrainman/sspi/ntlm
-# github.com/bdwyertech/go-get-proxied v0.0.0-20210411180753-808d00eb83c7
+# github.com/bdwyertech/go-get-proxied v0.0.0-20210806172840-273ebe50f739
 github.com/bdwyertech/go-get-proxied/proxy
 github.com/bdwyertech/go-get-proxied/winhttp
 # github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
 ## explicit
 github.com/bdwyertech/go-scutil/proxy
-# github.com/bdwyertech/proxyplease v0.1.1-0.20210411181055-87b0b23e723b
+# github.com/bdwyertech/proxyplease v0.1.1-0.20210806173316-144d3de1dd59
 ## explicit
 github.com/bdwyertech/proxyplease
-# github.com/darren/gpac v0.0.0-20201209040425-3300e0622b93 => github.com/bdwyertech/gpac v0.0.0-20210412191422-5e2441af9ea4
+# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20210806174158-5a8186b8896d
 github.com/darren/gpac
 # github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
-# github.com/dop251/goja v0.0.0-20210406175830-1b11a6af686d
+# github.com/dop251/goja v0.0.0-20210804101310-32956a348b49
 github.com/dop251/goja
 github.com/dop251/goja/ast
 github.com/dop251/goja/file
@@ -51,13 +51,13 @@ github.com/mattn/go-isatty
 github.com/sirupsen/logrus
 # golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 golang.org/x/crypto/md4
-# golang.org/x/net v0.0.0-20210410081132-afb366fc7cd1
+# golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 ## explicit
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20210403161142-5e06dd20ab57
+# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -77,7 +77,7 @@ golang.org/x/text/internal/tag
 golang.org/x/text/language
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
-# h12.io/socks v1.0.2
+# h12.io/socks v1.0.3
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20200419011457-7aaf118834c9
-# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20210412191422-5e2441af9ea4
+# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20210806174158-5a8186b8896d

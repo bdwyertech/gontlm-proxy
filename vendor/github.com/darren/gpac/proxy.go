@@ -2,12 +2,12 @@ package gpac
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -16,14 +16,28 @@ import (
 // PROXY 127.0.0.1:8080
 // SOCKS 127.0.0.1:1080
 type Proxy struct {
-	Type    string // Proxy type: PROXY HTTP HTTPS SOCKS DIRECT etc.
-	Address string // Proxy address
+	Type     string // Proxy type: PROXY HTTP HTTPS SOCKS DIRECT etc.
+	Address  string // Proxy address
+	Username string // Proxy username
+	Password string // Proxy password
 
 	client *http.Client
-	conce  sync.Once
+	auth   string
+	tr     *http.Transport
+}
 
-	tr    *http.Transport
-	tonce sync.Once
+func (p *Proxy) Init() {
+	if p.Username != "" && p.Password != "" {
+		p.auth = "Basic " + base64.StdEncoding.EncodeToString([]byte(p.Username+":"+p.Password))
+	}
+
+	p.tr = &http.Transport{
+		Proxy: p.Proxy(),
+	}
+
+	p.client = &http.Client{
+		Transport: p.tr,
+	}
 }
 
 // IsDirect tests whether it is using direct connection
@@ -54,15 +68,28 @@ func (p *Proxy) URL() string {
 // Proxy returns Proxy function that is ready use for http.Transport
 func (p *Proxy) Proxy() func(*http.Request) (*url.URL, error) {
 	var u *url.URL
+	var ustr string
 	var err error
 
 	switch p.Type {
 	case "DIRECT":
 		break
 	case "PROXY":
-		u, err = url.Parse(fmt.Sprintf("http://%s", p.Address))
+		if p.Username != "" && p.Password != "" {
+			ustr = fmt.Sprintf("http://%s:%s@%s", p.Username, p.Password, p.Address)
+		} else {
+			ustr = fmt.Sprintf("http://%s", p.Address)
+		}
 	default:
-		u, err = url.Parse(fmt.Sprintf("%s://%s", strings.ToLower(p.Type), p.Address))
+		if p.Username != "" && p.Password != "" {
+			ustr = fmt.Sprintf("%s:%s@%s://%s", p.Username, p.Password, strings.ToLower(p.Type), p.Address)
+		} else {
+			ustr = fmt.Sprintf("%s://%s", strings.ToLower(p.Type), p.Address)
+		}
+	}
+
+	if ustr != "" {
+		u, err = url.Parse(ustr)
 	}
 
 	return func(*http.Request) (*url.URL, error) {
@@ -91,12 +118,19 @@ func (p *Proxy) Dialer() func(ctx context.Context, network, addr string) (net.Co
 		return func(ctx context.Context, network, address string) (net.Conn, error) {
 			conn, err := zeroDialer.DialContext(ctx, network, p.Address)
 
+			header := make(http.Header)
+			if p.auth != "" {
+				header.Add("Authorization", p.auth)
+			}
+
+			//log.Printf("Dial %s [address:%s] [p.address: %s] header: %v", network, address, p.Address, header)
+
 			if err == nil {
 				connectReq := &http.Request{
 					Method: "CONNECT",
 					URL:    &url.URL{Opaque: address},
 					Host:   address,
-					Header: make(http.Header),
+					Header: header,
 				}
 				connectReq.Write(conn)
 			}
@@ -109,22 +143,8 @@ func (p *Proxy) Dialer() func(ctx context.Context, network, addr string) (net.Co
 	}
 }
 
-func (p *Proxy) transport() *http.Transport {
-	p.tonce.Do(func() {
-		p.tr = &http.Transport{
-			Proxy: p.Proxy(),
-		}
-	})
-	return p.tr
-}
-
 // Client returns an http.Client ready for use with this proxy
 func (p *Proxy) Client() *http.Client {
-	p.conce.Do(func() {
-		p.client = &http.Client{
-			Transport: p.transport(),
-		}
-	})
 	return p.client
 }
 
@@ -135,7 +155,7 @@ func (p *Proxy) Get(urlstr string) (*http.Response, error) {
 
 // Transport get the http.RoundTripper
 func (p *Proxy) Transport() *http.Transport {
-	return p.transport()
+	return p.tr
 }
 
 // Do sends an HTTP request via the proxy and returns an HTTP response
@@ -150,26 +170,38 @@ func (p *Proxy) String() string {
 	return fmt.Sprintf("%s %s", p.Type, p.Address)
 }
 
+func split(source string, s rune) []string {
+	return strings.FieldsFunc(source, func(r rune) bool {
+		return r == s
+	})
+}
+
 // ParseProxy parses proxy string returned by FindProxyForURL
 // and returns a slice of proxies
 func ParseProxy(pstr string) []*Proxy {
 	var proxies []*Proxy
-	ps := strings.FieldsFunc(pstr, func(r rune) bool {
-		if r == ';' {
-			return true
-		}
-		return false
-	})
-
-	for _, p := range ps {
+	for _, p := range split(pstr, ';') {
 		typeAddr := strings.Fields(p)
 		if len(typeAddr) == 2 {
-			proxies = append(proxies,
-				&Proxy{
-					Type:    strings.ToUpper(typeAddr[0]),
-					Address: typeAddr[1],
-				},
-			)
+			typ := strings.ToUpper(typeAddr[0])
+			addr := typeAddr[1]
+			var user, pass string
+			if at := strings.Index(addr, "@"); at > 0 {
+				auth := split(addr[:at], ':')
+				if len(auth) == 2 {
+					user = auth[0]
+					pass = auth[1]
+				}
+				addr = addr[at+1:]
+			}
+			proxy := &Proxy{
+				Type:     typ,
+				Address:  addr,
+				Username: user,
+				Password: pass,
+			}
+			proxy.Init()
+			proxies = append(proxies, proxy)
 		} else if len(typeAddr) == 1 {
 			proxies = append(proxies,
 				&Proxy{
