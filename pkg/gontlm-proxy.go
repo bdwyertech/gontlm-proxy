@@ -191,8 +191,10 @@ func Run() {
 	http.DefaultClient.Timeout = 10 * time.Second
 
 	srv := &http.Server{
-		Handler:     proxy,
-		IdleTimeout: time.Second * 60,
+		Handler:      proxy,
+		IdleTimeout:  5 * time.Second,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 	listener, err := net.Listen("tcp4", bind.Host)
 	if err != nil {
