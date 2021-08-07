@@ -17,6 +17,7 @@ builds:
       - amd64
     flags:
       - -mod=vendor
+      - -trimpath
     ldflags:
       - -s -w
       - -X github.com/bdwyertech/gontlm-proxy/cmd.GitCommit={{.ShortCommit}}
