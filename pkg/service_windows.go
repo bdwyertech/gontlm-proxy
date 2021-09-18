@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 // Windows Service Handler
