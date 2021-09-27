@@ -40,7 +40,7 @@ github.com/go-sourcemap/sourcemap/internal/base64vlq
 github.com/kardianos/service
 # github.com/launchdarkly/go-ntlmssp v1.0.1
 github.com/launchdarkly/go-ntlmssp
-# github.com/mattn/go-colorable v0.1.8
+# github.com/mattn/go-colorable v0.1.10
 ## explicit
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.14
