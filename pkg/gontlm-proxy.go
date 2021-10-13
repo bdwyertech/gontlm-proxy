@@ -187,9 +187,6 @@ func Run() {
 	// 	return req, nil
 	// })
 
-	// A dependency seems to be using the default client without a timeout somewhere...
-	http.DefaultClient.Timeout = 10 * time.Second
-
 	srv := &http.Server{
 		Handler:     proxy,
 		IdleTimeout: 5 * time.Second,
