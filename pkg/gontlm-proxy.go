@@ -99,13 +99,44 @@ func Run() {
 
 		dctx, err, _ := dialerCacheGroup.Do(cacheKey, func() (pxyCtx interface{}, err error) {
 			if ProxyOverrides != nil {
-				for _, host := range []string{addr, strings.Split(addr, ":")[0]} {
+				var detected bool
+				hosts := []string{addr, strings.Split(addr, ":")[0]}
+				//
+				// Exact Match
+				//
+				for _, host := range hosts {
 					if pxy, ok := (*ProxyOverrides)[strings.ToLower(host)]; ok {
+						// If empty (nil) assume direct connection
 						if pxy == nil {
 							d := net.Dialer{}
 							return d.DialContext, nil
 						}
+						detected = true
 						pxyUrl = pxy
+						break
+					}
+				}
+
+				//
+				// Suffix Match
+				//
+				if !detected {
+					for _, host := range hosts {
+						for dns, pxy := range *ProxyOverrides {
+							if strings.HasSuffix(strings.ToLower(host), dns) {
+								// If empty (nil) assume direct connection
+								if pxy == nil {
+									d := net.Dialer{}
+									return d.DialContext, nil
+								}
+								detected = true
+								pxyUrl = pxy
+								break
+							}
+						}
+						if detected {
+							break
+						}
 					}
 				}
 			}
