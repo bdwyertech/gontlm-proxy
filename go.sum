@@ -1,6 +1,6 @@
 github.com/ReneKroon/ttlcache/v2 v2.7.0/go.mod h1:mBxvsNY+BT8qLLd6CuAJubbKo6r0jh3nb5et22bbfGY=
-github.com/ReneKroon/ttlcache/v2 v2.8.1 h1:0Exdyt5+vEsdRoFO1T7qDIYM3gq/ETbeYV+vjgcPxZk=
-github.com/ReneKroon/ttlcache/v2 v2.8.1/go.mod h1:mBxvsNY+BT8qLLd6CuAJubbKo6r0jh3nb5et22bbfGY=
+github.com/ReneKroon/ttlcache/v2 v2.9.0 h1:NzwfErbifoNA3djEGwQJXKp/386imbyrc6Qmns5IX7c=
+github.com/ReneKroon/ttlcache/v2 v2.9.0/go.mod h1:mBxvsNY+BT8qLLd6CuAJubbKo6r0jh3nb5et22bbfGY=
 github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74 h1:Kk6a4nehpJ3UuJRqlA3JxYxBZEqCeOmATOvrbT4p9RA=
 github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74/go.mod h1:cEWa1LVoE5KvSD9ONXsZrj0z6KqySlCCNKHlLzbqAt4=
 github.com/bdwyertech/go-get-proxied v0.0.0-20210806172840-273ebe50f739 h1:1ZXK3I9yf/V+FPTMPTTiDGB+w5oOa8KN6pp0WGguGe8=
