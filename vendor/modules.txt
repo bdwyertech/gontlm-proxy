@@ -1,4 +1,4 @@
-# github.com/ReneKroon/ttlcache/v2 v2.8.1
+# github.com/ReneKroon/ttlcache/v2 v2.9.0
 ## explicit
 github.com/ReneKroon/ttlcache/v2
 # github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74
@@ -12,15 +12,15 @@ github.com/bdwyertech/go-get-proxied/winhttp
 # github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
 ## explicit
 github.com/bdwyertech/go-scutil/proxy
-# github.com/bdwyertech/proxyplease v0.1.1-0.20210806173316-144d3de1dd59
+# github.com/bdwyertech/proxyplease v0.1.1-0.20211019140244-55998f26eb51
 ## explicit
 github.com/bdwyertech/proxyplease
-# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20210806174158-5a8186b8896d
+# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20211019140514-9a59ca6e81fe
 github.com/darren/gpac
 # github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
-# github.com/dop251/goja v0.0.0-20210804101310-32956a348b49
+# github.com/dop251/goja v0.0.0-20211011172007-d99e4b8cbf48
 github.com/dop251/goja
 github.com/dop251/goja/ast
 github.com/dop251/goja/file
@@ -51,7 +51,7 @@ github.com/mattn/go-isatty
 github.com/sirupsen/logrus
 # golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 golang.org/x/crypto/md4
-# golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
+# golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -80,4 +80,4 @@ golang.org/x/text/unicode/norm
 # h12.io/socks v1.0.3
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20211013015200-f4875abca87a
-# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20210806174158-5a8186b8896d
+# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20211019140514-9a59ca6e81fe

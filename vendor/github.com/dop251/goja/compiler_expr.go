@@ -2,16 +2,10 @@ package goja
 
 import (
 	"fmt"
-	"regexp"
-
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja/file"
 	"github.com/dop251/goja/token"
 	"github.com/dop251/goja/unistring"
-)
-
-var (
-	octalRegexp = regexp.MustCompile(`^0[0-7]`)
 )
 
 type compiledExpr interface {
@@ -59,6 +53,13 @@ type compiledRegexpLiteral struct {
 type compiledLiteral struct {
 	baseCompiledExpr
 	val Value
+}
+
+type compiledTemplateLiteral struct {
+	baseCompiledExpr
+	tag         compiledExpr
+	elements    []*ast.TemplateElement
+	expressions []compiledExpr
 }
 
 type compiledAssignExpr struct {
@@ -204,6 +205,8 @@ func (c *compiler) compileExpression(v ast.Expression) compiledExpr {
 		return c.compileNumberLiteral(v)
 	case *ast.StringLiteral:
 		return c.compileStringLiteral(v)
+	case *ast.TemplateLiteral:
+		return c.compileTemplateLiteral(v)
 	case *ast.BooleanLiteral:
 		return c.compileBooleanLiteral(v)
 	case *ast.NullLiteral:
@@ -825,17 +828,79 @@ func (e *compiledLiteral) constant() bool {
 	return true
 }
 
+func (e *compiledTemplateLiteral) emitGetter(putOnStack bool) {
+	if e.tag == nil {
+		if len(e.elements) == 0 {
+			e.c.emit(loadVal(e.c.p.defineLiteralValue(stringEmpty)))
+		} else {
+			tail := e.elements[len(e.elements)-1].Parsed
+			if len(e.elements) == 1 {
+				e.c.emit(loadVal(e.c.p.defineLiteralValue(stringValueFromRaw(tail))))
+			} else {
+				stringCount := 0
+				if head := e.elements[0].Parsed; head != "" {
+					e.c.emit(loadVal(e.c.p.defineLiteralValue(stringValueFromRaw(head))))
+					stringCount++
+				}
+				e.expressions[0].emitGetter(true)
+				e.c.emit(_toString{})
+				stringCount++
+				for i := 1; i < len(e.elements)-1; i++ {
+					if elt := e.elements[i].Parsed; elt != "" {
+						e.c.emit(loadVal(e.c.p.defineLiteralValue(stringValueFromRaw(elt))))
+						stringCount++
+					}
+					e.expressions[i].emitGetter(true)
+					e.c.emit(_toString{})
+					stringCount++
+				}
+				if tail != "" {
+					e.c.emit(loadVal(e.c.p.defineLiteralValue(stringValueFromRaw(tail))))
+					stringCount++
+				}
+				e.c.emit(concatStrings(stringCount))
+			}
+		}
+	} else {
+		cooked := make([]Value, len(e.elements))
+		raw := make([]Value, len(e.elements))
+		for i, elt := range e.elements {
+			raw[i] = &valueProperty{
+				enumerable: true,
+				value:      newStringValue(elt.Literal),
+			}
+			var cookedVal Value
+			if elt.Valid {
+				cookedVal = stringValueFromRaw(elt.Parsed)
+			} else {
+				cookedVal = _undefined
+			}
+			cooked[i] = &valueProperty{
+				enumerable: true,
+				value:      cookedVal,
+			}
+		}
+		e.c.emitCallee(e.tag)
+		e.c.emit(&getTaggedTmplObject{
+			raw:    raw,
+			cooked: cooked,
+		})
+		for _, expr := range e.expressions {
+			expr.emitGetter(true)
+		}
+		e.c.emit(call(len(e.expressions) + 1))
+	}
+	if !putOnStack {
+		e.c.emit(pop)
+	}
+}
+
 func (c *compiler) compileParameterBindingIdentifier(name unistring.String, offset int) (*binding, bool) {
 	if c.scope.strict {
 		c.checkIdentifierName(name, offset)
 		c.checkIdentifierLName(name, offset)
 	}
-	b, unique := c.scope.bindNameShadow(name)
-	if !unique && c.scope.strict {
-		c.throwSyntaxError(offset, "Strict mode function may not have duplicate parameter names (%s)", name)
-		return nil, false
-	}
-	return b, unique
+	return c.scope.bindNameShadow(name)
 }
 
 func (c *compiler) compileParameterPatternIdBinding(name unistring.String, offset int) {
@@ -911,16 +976,17 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 		if item.Initializer != nil {
 			hasInits = true
 		}
-		if hasPatterns || hasInits || e.isArrow {
-			if firstDupIdx >= 0 {
-				e.c.throwSyntaxError(firstDupIdx, "Duplicate parameter name not allowed in this context")
-				return
-			}
-			if e.strict != nil {
-				e.c.throwSyntaxError(int(e.strict.Idx)-1, "Illegal 'use strict' directive in function with non-simple parameter list")
-				return
-			}
+
+		if firstDupIdx >= 0 && (hasPatterns || hasInits || s.strict || e.isArrow) {
+			e.c.throwSyntaxError(firstDupIdx, "Duplicate parameter name not allowed in this context")
+			return
 		}
+
+		if (hasPatterns || hasInits) && e.strict != nil {
+			e.c.throwSyntaxError(int(e.strict.Idx)-1, "Illegal 'use strict' directive in function with non-simple parameter list")
+			return
+		}
+
 		if !hasInits {
 			length++
 		}
@@ -1154,7 +1220,7 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 				e.c.p.code[enterFunc2Mark] = ef2
 			}
 		}
-		if emitArgsRestMark != -1 {
+		if emitArgsRestMark != -1 && s.argsInStash {
 			e.c.p.code[emitArgsRestMark] = createArgsRestStash
 		}
 	} else {
@@ -1248,13 +1314,11 @@ func (e *compiledThisExpr) emitGetter(putOnStack bool) {
 	if putOnStack {
 		e.addSrcMap()
 		scope := e.c.scope
-		for ; scope != nil && !scope.function && !scope.eval; scope = scope.outer {
+		for ; scope != nil && (scope.arrow || !scope.function && !scope.eval); scope = scope.outer {
 		}
 
 		if scope != nil {
-			if !scope.arrow {
-				scope.thisNeeded = true
-			}
+			scope.thisNeeded = true
 			e.c.emit(loadStack(0))
 		} else {
 			e.c.emit(loadGlobalObject)
@@ -1852,28 +1916,32 @@ func (c *compiler) compileRegexpLiteral(v *ast.RegExpLiteral) compiledExpr {
 	return r
 }
 
-func (e *compiledCallExpr) emitGetter(putOnStack bool) {
-	var calleeName unistring.String
-	if e.isVariadic {
-		e.c.emit(startVariadic)
-	}
-	switch callee := e.callee.(type) {
+func (c *compiler) emitCallee(callee compiledExpr) (calleeName unistring.String) {
+	switch callee := callee.(type) {
 	case *compiledDotExpr:
 		callee.left.emitGetter(true)
-		e.c.emit(dup)
-		e.c.emit(getPropCallee(callee.name))
+		c.emit(dup)
+		c.emit(getPropCallee(callee.name))
 	case *compiledBracketExpr:
 		callee.left.emitGetter(true)
-		e.c.emit(dup)
+		c.emit(dup)
 		callee.member.emitGetter(true)
-		e.c.emit(getElemCallee)
+		c.emit(getElemCallee)
 	case *compiledIdentifierExpr:
 		calleeName = callee.name
 		callee.emitGetterAndCallee()
 	default:
-		e.c.emit(loadUndef)
+		c.emit(loadUndef)
 		callee.emitGetter(true)
 	}
+	return
+}
+
+func (e *compiledCallExpr) emitGetter(putOnStack bool) {
+	if e.isVariadic {
+		e.c.emit(startVariadic)
+	}
+	calleeName := e.c.emitCallee(e.callee)
 
 	for _, expr := range e.args {
 		expr.emitGetter(true)
@@ -1976,7 +2044,7 @@ func (c *compiler) compileIdentifierExpression(v *ast.Identifier) compiledExpr {
 }
 
 func (c *compiler) compileNumberLiteral(v *ast.NumberLiteral) compiledExpr {
-	if c.scope.strict && octalRegexp.MatchString(v.Literal) {
+	if c.scope.strict && len(v.Literal) > 1 && v.Literal[0] == '0' && v.Literal[1] <= '7' && v.Literal[1] >= '0' {
 		c.throwSyntaxError(int(v.Idx)-1, "Octal literals are not allowed in strict mode")
 		panic("Unreachable")
 	}
@@ -2000,6 +2068,21 @@ func (c *compiler) compileStringLiteral(v *ast.StringLiteral) compiledExpr {
 	r := &compiledLiteral{
 		val: stringValueFromRaw(v.Value),
 	}
+	r.init(c, v.Idx0())
+	return r
+}
+
+func (c *compiler) compileTemplateLiteral(v *ast.TemplateLiteral) compiledExpr {
+	r := &compiledTemplateLiteral{}
+	if v.Tag != nil {
+		r.tag = c.compileExpression(v.Tag)
+	}
+	ce := make([]compiledExpr, len(v.Expressions))
+	for i, expr := range v.Expressions {
+		ce[i] = c.compileExpression(expr)
+	}
+	r.expressions = ce
+	r.elements = v.Elements
 	r.init(c, v.Idx0())
 	return r
 }
