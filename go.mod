@@ -13,7 +13,7 @@ replace github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-202110191405
 // replace github.com/rapid7/go-get-proxied => ../go-get-proxied
 
 require (
-	github.com/ReneKroon/ttlcache/v2 v2.9.0
+	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
 	github.com/bdwyertech/proxyplease v0.1.1-0.20211019140244-55998f26eb51
 	github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000

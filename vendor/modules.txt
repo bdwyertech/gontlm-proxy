@@ -1,4 +1,4 @@
-# github.com/ReneKroon/ttlcache/v2 v2.9.0
+# github.com/ReneKroon/ttlcache/v2 v2.11.0
 ## explicit
 github.com/ReneKroon/ttlcache/v2
 # github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74
