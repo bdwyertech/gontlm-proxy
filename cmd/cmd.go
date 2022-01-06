@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"runtime"
@@ -43,4 +44,9 @@ func Execute() {
 	} else {
 		proxy.Run()
 	}
+}
+
+func ExecuteWithContext(ctx context.Context) {
+	proxy.ProxyContext = ctx
+	Execute()
 }
