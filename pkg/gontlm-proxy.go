@@ -2,11 +2,13 @@ package ntlm_proxy
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	// "regexp"
 	"strings"
 	"time"
@@ -24,6 +26,7 @@ import (
 var ProxyBind string
 var ProxyServer string
 var ProxyVerbose bool
+var ProxyContext context.Context
 
 func init() {
 	flag.StringVar(&ProxyBind, "bind", getEnv("GONTLM_BIND", "http://0.0.0.0:3128"), "IP & Port to bind to")
@@ -226,7 +229,34 @@ func Run() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Fatal(srv.Serve(listener))
+	defer listener.Close()
+
+	// Run our server in a goroutine so that it doesn't block.
+	go func() {
+		if err := srv.Serve(listener); err != nil {
+			if ProxyContext == nil || !errors.Is(ProxyContext.Err(), context.Canceled) {
+				log.Error(err)
+			}
+		}
+	}()
+
+	if ProxyContext != nil {
+		<-ProxyContext.Done()
+	} else {
+		c := make(chan os.Signal, 1)
+		// Accept graceful shutdowns when quit via SIGINT (Ctrl+C)
+		// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
+		signal.Notify(c, os.Interrupt)
+		// Block until we receive our signal.
+		<-c
+	}
+
+	// Create a deadline to wait for.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Doesn't block if no connections, but will otherwise wait
+	// until the timeout deadline.
+	srv.Shutdown(ctx)
 }
 
 // Check if it is a WebSocketUpgrade
