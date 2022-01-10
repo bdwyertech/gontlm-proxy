@@ -17,7 +17,7 @@ require (
 	github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
 	github.com/bdwyertech/proxyplease v0.1.1-0.20211019140244-55998f26eb51
 	github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000
-	github.com/kardianos/service v1.2.0
+	github.com/kardianos/service v1.2.1
 	github.com/mattn/go-colorable v0.1.12
 	github.com/mattn/go-isatty v0.0.14
 	github.com/sirupsen/logrus v1.8.1
