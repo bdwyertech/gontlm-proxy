@@ -57,7 +57,7 @@ golang.org/x/net/proxy
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 ## explicit
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20220110181412-a018aaa089fe
+# golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix

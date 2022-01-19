@@ -222,8 +222,14 @@ func Run() {
 	// })
 
 	srv := &http.Server{
-		Handler:     proxy,
-		IdleTimeout: 5 * time.Second,
+		Handler: proxy,
+		IdleTimeout: func() time.Duration {
+			if timeout, err := time.ParseDuration(os.Getenv("GONTLM_PROXY_IDLE_TIMEOUT")); err == nil {
+				return timeout
+			} else {
+				return 5 * time.Second
+			}
+		}(),
 	}
 	listener, err := net.Listen("tcp4", bind.Host)
 	if err != nil {

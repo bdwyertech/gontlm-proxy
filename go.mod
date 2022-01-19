@@ -22,5 +22,5 @@ require (
 	github.com/mattn/go-isatty v0.0.14
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220110181412-a018aaa089fe
+	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 )
