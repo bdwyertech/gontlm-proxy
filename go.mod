@@ -4,7 +4,7 @@ go 1.16
 
 replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20211013015200-f4875abca87a
 
-replace github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20211019140514-9a59ca6e81fe
+replace github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20220302173948-d2419b9764eb
 
 // replace github.com/aus/proxyplease => ../proxyplease
 
@@ -22,5 +22,6 @@ require (
 	github.com/mattn/go-isatty v0.0.14
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9
+
 )

@@ -3,14 +3,13 @@ package parser
 import (
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"strings"
+
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja/file"
 	"github.com/dop251/goja/token"
 	"github.com/go-sourcemap/sourcemap"
-	"io/ioutil"
-	"net/url"
-	"path"
-	"strings"
 )
 
 func (self *_parser) parseBlockStatement() *ast.BlockStatement {
@@ -270,6 +269,7 @@ func (self *_parser) parseThrowStatement() ast.Statement {
 	}
 
 	node := &ast.ThrowStatement{
+		Throw:    idx,
 		Argument: self.parseExpression(),
 	}
 
@@ -459,14 +459,14 @@ func (self *_parser) parseForOrForInStatement() ast.Statement {
 				}
 			}
 			if forIn || forOf {
+				if list[0].Initializer != nil {
+					self.error(list[0].Initializer.Idx0(), "for-in loop variable declaration may not have an initializer")
+				}
 				if tok == token.VAR {
 					into = &ast.ForIntoVar{
 						Binding: list[0],
 					}
 				} else {
-					if list[0].Initializer != nil {
-						self.error(list[0].Initializer.Idx0(), "for-in loop variable declaration may not have an initializer")
-					}
 					into = &ast.ForDeclaration{
 						Idx:     idx,
 						IsConst: tok == token.CONST,
@@ -694,26 +694,14 @@ func (self *_parser) parseSourceMap() *sourcemap.Consumer {
 			b64 := urlStr[b64Index+1:]
 			data, err = base64.StdEncoding.DecodeString(b64)
 		} else {
-			var smUrl *url.URL
-			if smUrl, err = url.Parse(urlStr); err == nil {
-				p := smUrl.Path
-				if !path.IsAbs(p) {
-					baseName := self.file.Name()
-					baseUrl, err1 := url.Parse(baseName)
-					if err1 == nil && baseUrl.Scheme != "" {
-						baseUrl.Path = path.Join(path.Dir(baseUrl.Path), p)
-						p = baseUrl.String()
-					} else {
-						p = path.Join(path.Dir(baseName), p)
-					}
-				}
+			if sourceURL := file.ResolveSourcemapURL(self.file.Name(), urlStr); sourceURL != nil {
 				if self.opts.sourceMapLoader != nil {
-					data, err = self.opts.sourceMapLoader(p)
+					data, err = self.opts.sourceMapLoader(sourceURL.String())
 				} else {
-					if smUrl.Scheme == "" || smUrl.Scheme == "file" {
-						data, err = ioutil.ReadFile(p)
+					if sourceURL.Scheme == "" || sourceURL.Scheme == "file" {
+						data, err = ioutil.ReadFile(sourceURL.Path)
 					} else {
-						err = fmt.Errorf("unsupported source map URL scheme: %s", smUrl.Scheme)
+						err = fmt.Errorf("unsupported source map URL scheme: %s", sourceURL.Scheme)
 					}
 				}
 			}

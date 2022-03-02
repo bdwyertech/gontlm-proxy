@@ -15,12 +15,12 @@ github.com/bdwyertech/go-scutil/proxy
 # github.com/bdwyertech/proxyplease v0.1.1-0.20211019140244-55998f26eb51
 ## explicit
 github.com/bdwyertech/proxyplease
-# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20211019140514-9a59ca6e81fe
+# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20220302173948-d2419b9764eb
 github.com/darren/gpac
 # github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
-# github.com/dop251/goja v0.0.0-20211011172007-d99e4b8cbf48
+# github.com/dop251/goja v0.0.0-20220214123719-b09a6bfa842f
 github.com/dop251/goja
 github.com/dop251/goja/ast
 github.com/dop251/goja/file
@@ -57,7 +57,7 @@ golang.org/x/net/proxy
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 ## explicit
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
+# golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -77,7 +77,8 @@ golang.org/x/text/internal/tag
 golang.org/x/text/language
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
+golang.org/x/text/unicode/rangetable
 # h12.io/socks v1.0.3
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20211013015200-f4875abca87a
-# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20211019140514-9a59ca6e81fe
+# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20220302173948-d2419b9764eb
