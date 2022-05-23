@@ -994,6 +994,16 @@ end:
 	vm.pc++
 }
 
+type _exp struct{}
+
+var exp _exp
+
+func (_exp) exec(vm *vm) {
+	vm.sp--
+	vm.stack[vm.sp-1] = pow(vm.stack[vm.sp-1], vm.stack[vm.sp])
+	vm.pc++
+}
+
 type _div struct{}
 
 var div _div
@@ -1842,9 +1852,11 @@ func (_newArrayFromIter) exec(vm *vm) {
 	iter := vm.iterStack[l].iter
 	vm.iterStack[l] = iterStackItem{}
 	vm.iterStack = vm.iterStack[:l]
-	iter.iterate(func(val Value) {
-		values = append(values, val)
-	})
+	if iter.iterator != nil {
+		iter.iterate(func(val Value) {
+			values = append(values, val)
+		})
+	}
 	vm.push(vm.r.newArrayValues(values))
 	vm.pc++
 }
@@ -3084,14 +3096,22 @@ func (vm *vm) alreadyDeclared(name unistring.String) Value {
 func (vm *vm) checkBindVarsGlobal(names []unistring.String) {
 	o := vm.r.globalObject.self
 	sn := vm.r.global.stash.names
-	if o, ok := o.(*baseObject); ok {
+	if bo, ok := o.(*baseObject); ok {
 		// shortcut
-		for _, name := range names {
-			if !o.hasOwnPropertyStr(name) && !o.extensible {
-				panic(vm.r.NewTypeError("Cannot define global variable '%s', global object is not extensible", name))
+		if bo.extensible {
+			for _, name := range names {
+				if _, exists := sn[name]; exists {
+					panic(vm.alreadyDeclared(name))
+				}
 			}
-			if _, exists := sn[name]; exists {
-				panic(vm.alreadyDeclared(name))
+		} else {
+			for _, name := range names {
+				if !bo.hasOwnPropertyStr(name) {
+					panic(vm.r.NewTypeError("Cannot define global variable '%s', global object is not extensible", name))
+				}
+				if _, exists := sn[name]; exists {
+					panic(vm.alreadyDeclared(name))
+				}
 			}
 		}
 	} else {
@@ -3113,10 +3133,10 @@ func (vm *vm) createGlobalVarBindings(names []unistring.String, d bool) {
 		vm.r.global.varNames = globalVarNames
 	}
 	o := vm.r.globalObject.self
-	if o, ok := o.(*baseObject); ok {
+	if bo, ok := o.(*baseObject); ok {
 		for _, name := range names {
-			if !o.hasOwnPropertyStr(name) && o.extensible {
-				o._putProp(name, _undefined, true, true, d)
+			if !bo.hasOwnPropertyStr(name) && bo.extensible {
+				bo._putProp(name, _undefined, true, true, d)
 			}
 			globalVarNames[name] = struct{}{}
 		}
@@ -3304,6 +3324,7 @@ func (j jeq1) exec(vm *vm) {
 	if vm.stack[vm.sp-1].ToBoolean() {
 		vm.pc += int(j)
 	} else {
+		vm.sp--
 		vm.pc++
 	}
 }
@@ -3314,6 +3335,7 @@ func (j jneq1) exec(vm *vm) {
 	if !vm.stack[vm.sp-1].ToBoolean() {
 		vm.pc += int(j)
 	} else {
+		vm.sp--
 		vm.pc++
 	}
 }
@@ -3351,6 +3373,31 @@ func (j jopt) exec(vm *vm) {
 		vm.pc += int(j)
 	default:
 		vm.pc++
+	}
+}
+
+type joptc int32
+
+func (j joptc) exec(vm *vm) {
+	switch vm.stack[vm.sp-1].(type) {
+	case valueNull, valueUndefined, memberUnresolved:
+		vm.sp--
+		vm.stack[vm.sp-1] = _undefined
+		vm.pc += int(j)
+	default:
+		vm.pc++
+	}
+}
+
+type jcoalesc int32
+
+func (j jcoalesc) exec(vm *vm) {
+	switch vm.stack[vm.sp-1] {
+	case _undefined, _null:
+		vm.sp--
+		vm.pc++
+	default:
+		vm.pc += int(j)
 	}
 }
 

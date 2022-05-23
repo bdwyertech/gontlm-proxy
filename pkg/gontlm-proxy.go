@@ -15,9 +15,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/bdwyertech/proxyplease"
 	"github.com/elazarl/goproxy"
+	"github.com/jellydator/ttlcache/v2"
 	"golang.org/x/sync/singleflight"
 	// "github.com/bhendo/concord"
 	// "github.com/bhendo/concord/handshakers"

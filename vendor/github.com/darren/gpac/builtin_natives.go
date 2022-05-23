@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/dop251/goja"
+	"github.com/jellydator/ttlcache/v2"
 )
 
 var builtinNatives = map[string]func(*goja.Runtime) func(call goja.FunctionCall) goja.Value{
