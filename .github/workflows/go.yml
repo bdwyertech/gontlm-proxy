@@ -24,10 +24,12 @@ jobs:
       - name: Test
         env:
           GOFLAGS: '-mod=vendor'
+          STATICCHECK_VERSION: '2022.1.2'
         run: |
-          GO111MODULE=off go get honnef.co/go/tools/cmd/staticcheck
+          wget -qO- https://github.com/dominikh/go-tools/releases/download/${STATICCHECK_VERSION}/staticcheck_linux_amd64.tar.gz | tar zxf - --directory /usr/local/bin --strip-components=1 staticcheck/staticcheck
           go fmt $(go list ./... | grep -v /vendor/) | xargs -I {} -r /bin/sh -c "/bin/echo {} && exit 1"
           go vet $(go list ./... | grep -v /vendor/)
+          staticcheck --version
           staticcheck $(go list ./... | grep -v /vendor/)
           go test -v -race $(go list ./... | grep -v /vendor/)
 
