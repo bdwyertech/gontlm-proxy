@@ -1,6 +1,6 @@
 module github.com/bdwyertech/gontlm-proxy
 
-go 1.16
+go 1.17
 
 replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20220523170445-07bdbc2a32f7
 
@@ -23,4 +23,18 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8
+)
+
+require (
+	github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74 // indirect
+	github.com/bdwyertech/go-get-proxied v0.0.0-20210806172840-273ebe50f739 // indirect
+	github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af // indirect
+	github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91 // indirect
+	github.com/dop251/goja v0.0.0-20220516123900-4418d4575a41 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
+	github.com/launchdarkly/go-ntlmssp v1.0.1 // indirect
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
+	golang.org/x/text v0.3.7 // indirect
+	h12.io/socks v1.0.3 // indirect
 )
