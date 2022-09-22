@@ -40,13 +40,13 @@ github.com/jellydator/ttlcache/v2
 github.com/kardianos/service
 # github.com/launchdarkly/go-ntlmssp v1.0.1
 github.com/launchdarkly/go-ntlmssp
-# github.com/mattn/go-colorable v0.1.12
+# github.com/mattn/go-colorable v0.1.13
 ## explicit
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.14
+# github.com/mattn/go-isatty v0.0.16
 ## explicit
 github.com/mattn/go-isatty
-# github.com/sirupsen/logrus v1.8.1
+# github.com/sirupsen/logrus v1.9.0
 ## explicit
 github.com/sirupsen/logrus
 # golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
@@ -57,7 +57,7 @@ golang.org/x/net/proxy
 # golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 ## explicit
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
+# golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
