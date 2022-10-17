@@ -17,7 +17,7 @@ require (
 	github.com/bdwyertech/proxyplease v0.1.1-0.20211019140244-55998f26eb51
 	github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000
 	github.com/jellydator/ttlcache/v2 v2.11.1
-	github.com/kardianos/service v1.2.1
+	github.com/kardianos/service v1.2.2
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/sirupsen/logrus v1.9.0
