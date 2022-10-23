@@ -60,10 +60,15 @@ func (proxy *ProxyHttpServer) dial(network, addr string) (c net.Conn, err error)
 	return net.Dial(network, addr)
 }
 
-func (proxy *ProxyHttpServer) connectDial(network, addr string) (c net.Conn, err error) {
-	if proxy.ConnectDial == nil {
+func (proxy *ProxyHttpServer) connectDial(ctx *ProxyCtx, network, addr string) (c net.Conn, err error) {
+	if proxy.ConnectDialWithReq == nil && proxy.ConnectDial == nil {
 		return proxy.dial(network, addr)
 	}
+
+	if proxy.ConnectDialWithReq != nil {
+		return proxy.ConnectDialWithReq(ctx.Req, network, addr)
+	}
+
 	return proxy.ConnectDial(network, addr)
 }
 
@@ -105,13 +110,13 @@ func (proxy *ProxyHttpServer) handleHttps(w http.ResponseWriter, r *http.Request
 		if !hasPort.MatchString(host) {
 			host += ":80"
 		}
-		targetSiteCon, err := proxy.connectDial("tcp", host)
+		targetSiteCon, err := proxy.connectDial(ctx, "tcp", host)
 		if err != nil {
 			httpError(proxyClient, ctx, err)
 			return
 		}
 		ctx.Logf("Accepting CONNECT to %s", host)
-		proxyClient.Write([]byte("HTTP/1.0 200 Connection established\r\n\r\n"))
+		proxyClient.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 
 		targetTCP, targetOK := targetSiteCon.(halfClosable)
 		proxyClientTCP, clientOK := proxyClient.(halfClosable)
@@ -144,7 +149,7 @@ func (proxy *ProxyHttpServer) handleHttps(w http.ResponseWriter, r *http.Request
 	case ConnectHTTPMitm:
 		proxyClient.Write([]byte("HTTP/1.0 200 OK\r\n\r\n"))
 		ctx.Logf("Assuming CONNECT is plain HTTP tunneling, mitm proxying it")
-		targetSiteCon, err := proxy.connectDial("tcp", host)
+		targetSiteCon, err := proxy.connectDial(ctx, "tcp", host)
 		if err != nil {
 			ctx.Warnf("Error dialing to %s: %s", host, err.Error())
 			return

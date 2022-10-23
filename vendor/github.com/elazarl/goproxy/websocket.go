@@ -29,7 +29,7 @@ func (proxy *ProxyHttpServer) serveWebsocketTLS(ctx *ProxyCtx, w http.ResponseWr
 	targetURL := url.URL{Scheme: "wss", Host: req.URL.Host, Path: req.URL.Path}
 
 	// Connect to upstream
-	conn, err := proxy.connectDial("tcp", targetURL.Host)
+	conn, err := proxy.connectDial(ctx, "tcp", targetURL.Host)
 	if err != nil {
 		ctx.Warnf("Error dialing target site: %v", err)
 		return
@@ -63,7 +63,7 @@ func (proxy *ProxyHttpServer) serveWebsocketTLS(ctx *ProxyCtx, w http.ResponseWr
 func (proxy *ProxyHttpServer) serveWebsocket(ctx *ProxyCtx, w http.ResponseWriter, req *http.Request) {
 	targetURL := url.URL{Scheme: "ws", Host: req.URL.Host, Path: req.URL.Path}
 
-	targetConn, err := proxy.connectDial("tcp", targetURL.Host)
+	targetConn, err := proxy.connectDial(ctx, "tcp", targetURL.Host)
 	if err != nil {
 		ctx.Warnf("Error dialing target site: %v", err)
 		return

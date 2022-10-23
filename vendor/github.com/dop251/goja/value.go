@@ -1,6 +1,7 @@
 package goja
 
 import (
+	"fmt"
 	"hash/maphash"
 	"math"
 	"reflect"
@@ -49,6 +50,8 @@ var (
 	reflectTypeMap    = reflect.TypeOf(map[string]interface{}{})
 	reflectTypeArray  = reflect.TypeOf([]interface{}{})
 	reflectTypeString = reflect.TypeOf("")
+	reflectTypeFunc   = reflect.TypeOf((func(FunctionCall) Value)(nil))
+	reflectTypeError  = reflect.TypeOf((*error)(nil)).Elem()
 )
 
 var intCache [256]Value
@@ -96,6 +99,7 @@ type valueContainer interface {
 type typeError string
 type rangeError string
 type referenceError string
+type syntaxError string
 
 type valueInt int64
 type valueFloat float64
@@ -931,6 +935,13 @@ func (o *Object) MarshalJSON() ([]byte, error) {
 	return ctx.buf.Bytes(), nil
 }
 
+// UnmarshalJSON implements the json.Unmarshaler interface. It is added to compliment MarshalJSON, because
+// some alternative JSON encoders refuse to use MarshalJSON unless UnmarshalJSON is also present.
+// It is a no-op and always returns nil.
+func (o *Object) UnmarshalJSON([]byte) error {
+	return nil
+}
+
 // ClassName returns the class name
 func (o *Object) ClassName() string {
 	return o.self.className()
@@ -1141,6 +1152,22 @@ func funcName(prefix string, n Value) valueString {
 		b.WriteString(n.toString())
 	}
 	return b.String()
+}
+
+func newTypeError(args ...interface{}) typeError {
+	msg := ""
+	if len(args) > 0 {
+		f, _ := args[0].(string)
+		msg = fmt.Sprintf(f, args[1:]...)
+	}
+	return typeError(msg)
+}
+
+func typeErrorResult(throw bool, args ...interface{}) {
+	if throw {
+		panic(newTypeError(args...))
+	}
+
 }
 
 func init() {
