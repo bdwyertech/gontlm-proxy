@@ -97,6 +97,7 @@ type Provider interface {
 			receive: Time in milliseconds to receive a response to a request. Provider default is 20000.
 	*/
 	SetTimeouts(resolve int, connect int, send int, receive int)
+	GetProxies(protocol string, targetUrl string) []Proxy
 }
 
 const (

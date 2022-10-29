@@ -54,7 +54,11 @@ func (p *providerWindows) GetProxy(protocol string, targetUrlStr string) Proxy {
 	if proxy != nil {
 		return proxy
 	}
-	return p.readWinHttpProxy(protocol, targetUrl)
+	proxies := p.readWinHttpProxy(protocol, targetUrl)
+	if len(proxies) == 0 {
+		return nil
+	}
+	return proxies[len(proxies) - 1]
 }
 
 /*
@@ -109,6 +113,16 @@ func (p *providerWindows) GetSOCKSProxy(targetUrl string) Proxy {
 	return p.GetProxy(protocolSOCKS, targetUrl)
 }
 
+func (p *providerWindows) GetProxies(protocol string, targetUrlStr string) []Proxy {
+	targetUrl := ParseTargetURL(targetUrlStr, protocol)
+	proxy := p.provider.get(protocol, targetUrl)
+	if proxy != nil {
+		return  []Proxy{proxy}
+	}
+	proxies := p.readWinHttpProxy(protocol, targetUrl)
+	return proxies
+}
+
 const (
 	userAgent        = "ir_agent"
 	srcAutoDetect    = "WinHTTP:AutoDetect"
@@ -122,7 +136,7 @@ type providerWindows struct {
 }
 
 //noinspection SpellCheckingInspection
-func (p *providerWindows) readWinHttpProxy(protocol string, targetUrl *url.URL) Proxy {
+func (p *providerWindows) readWinHttpProxy(protocol string, targetUrl *url.URL) []Proxy {
 	// Internet Options
 	ieProxyConfig, err := p.getIeProxyConfigCurrentUser()
 	if err != nil {
@@ -138,24 +152,25 @@ func (p *providerWindows) readWinHttpProxy(protocol string, targetUrl *url.URL) 
 			}
 		}
 		if autoConfigUrl := winhttp.LpwstrToString(ieProxyConfig.LpszAutoConfigUrl); autoConfigUrl != "" {
-			proxy, err := p.getProxyAutoConfigUrl(protocol, targetUrl, autoConfigUrl)
+			proxies, err := p.getProxyAutoConfigUrl(protocol, targetUrl, autoConfigUrl)
 			if err == nil {
-				return proxy
+				return proxies
 			} else if !isNotFound(err) {
 				log.Printf("[proxy.Provider.readWinHttpProxy] No proxy discovered via AutoConfigUrl, %s: %s\n", autoConfigUrl, err)
 			}
 		}
-		proxy, err := p.parseProxyInfo(srcNamedProxy, protocol, targetUrl, ieProxyConfig.LpszProxy, ieProxyConfig.LpszProxyBypass)
+		// LpszProxy may contain multiple proxies which needs to be parsed into a list of Proxy
+		proxies, err := p.parseProxyInfo(srcNamedProxy, protocol, targetUrl, ieProxyConfig.LpszProxy, ieProxyConfig.LpszProxyBypass)
 		if err == nil {
-			return proxy
+			return proxies
 		} else if !isNotFound(err) {
 			log.Printf("[proxy.Provider.readWinHttpProxy] Failed to parse named proxy: %s\n", err)
 		}
 	}
 	// netsh winhttp
-	proxy, err := p.getProxyWinHttpDefault(protocol, targetUrl)
+	proxies, err := p.getProxyWinHttpDefault(protocol, targetUrl)
 	if err == nil {
-		return proxy
+		return proxies
 	} else if !isNotFound(err) {
 		log.Printf("[proxy.Provider.readWinHttpProxy] Failed to parse WinHttp default proxy info: %s\n", err)
 	}
@@ -187,7 +202,7 @@ Returns:
 	nil, notFoundError: No proxy was found
 	nil, error: An error occurred
 */
-func (p *providerWindows) getProxyAutoDetect(protocol string, targetUrl *url.URL) (Proxy, error) {
+func (p *providerWindows) getProxyAutoDetect(protocol string, targetUrl *url.URL) ([]Proxy, error) {
 	return p.getProxyForUrl(srcAutoDetect, protocol, targetUrl,
 		&winhttp.AutoProxyOptions{
 			DwFlags:                winhttp.WINHTTP_AUTOPROXY_AUTO_DETECT,
@@ -207,7 +222,7 @@ Returns:
 	nil, notFoundError: No proxy was found
 	nil, error: An error occurred
 */
-func (p *providerWindows) getProxyAutoConfigUrl(protocol string, targetUrl *url.URL, autoConfigUrl string) (Proxy, error) {
+func (p *providerWindows) getProxyAutoConfigUrl(protocol string, targetUrl *url.URL, autoConfigUrl string) ([]Proxy, error) {
 	return p.getProxyForUrl(srcAutoConfigUrl, protocol, targetUrl,
 		&winhttp.AutoProxyOptions{
 			DwFlags:                winhttp.WINHTTP_AUTOPROXY_CONFIG_URL,
@@ -227,7 +242,7 @@ Returns:
 	nil, notFoundError: No proxy was found
 	nil, error: An error occurred
 */
-func (p *providerWindows) getProxyWinHttpDefault(protocol string, targetUrl *url.URL) (Proxy, error) {
+func (p *providerWindows) getProxyWinHttpDefault(protocol string, targetUrl *url.URL) ([]Proxy, error) {
 	pInfo, err := winhttp.GetDefaultProxyConfiguration()
 	if err != nil {
 		return nil, err
@@ -237,18 +252,18 @@ func (p *providerWindows) getProxyWinHttpDefault(protocol string, targetUrl *url
 }
 
 /*
-Returns the Proxy found through either automatic detection or a automatic configuration URL.
+Returns the Proxies found through either automatic detection or a automatic configuration URL.
 Params:
 	src: If a proxy is constructed, the human readable source to associated it with.
 	protocol: The protocol of traffic the proxy is to be used for. (i.e. http, https, ftp, socks)
 	targetUrl: The URL the proxy is to be used for. (i.e. https://test.endpoint.rapid7.com)
 	autoProxyOptions: Use this to inform WinHTTP what route to take when doing the lookup (automatic detection, or automatic configuration URL)
 Returns:
-	Proxy, nil: A proxy was found
+	Proxy, nil: A list of proxy was found
 	nil, notFoundError: No proxy was found
 	nil, error: An error occurred
 */
-func (p *providerWindows) getProxyForUrl(src string, protocol string, targetUrl *url.URL, autoProxyOptions *winhttp.AutoProxyOptions) (Proxy, error) {
+func (p *providerWindows) getProxyForUrl(src string, protocol string, targetUrl *url.URL, autoProxyOptions *winhttp.AutoProxyOptions) ([]Proxy, error) {
 	pInfo, err := p.getProxyInfoForUrl(targetUrl, autoProxyOptions)
 	if err != nil {
 		return nil, err
@@ -297,59 +312,68 @@ Params:
 	lpszProxy: The Lpwstr which represents the proxy value (if any). This value can be optionally separated by protocol.
 	lpszProxyBypass: The Lpwstr which represents the proxy bypass value (if any).
 Returns:
-	Proxy, nil: A proxy was found
+	Proxy, nil: A list of proxies matching the lookup criteria
 	nil, notFoundError: No proxy was found or was bypassed
 	nil, error: An error occurred
 */
 //noinspection SpellCheckingInspection
-func (p *providerWindows) parseProxyInfo(src string, protocol string, targetUrl *url.URL, lpszProxy winhttp.Lpwstr, lpszProxyBypass winhttp.Lpwstr) (Proxy, error) {
-	proxyUrlStr := p.parseLpszProxy(protocol, winhttp.LpwstrToString(lpszProxy))
-	if proxyUrlStr == "" {
-		return nil, new(notFoundError)
-	}
-	proxyUrl, err := ParseURL(proxyUrlStr, "")
-	if err != nil {
-		return nil, err
-	}
+func (p *providerWindows) parseProxyInfo(src string, protocol string, targetUrl *url.URL, lpszProxy winhttp.Lpwstr, lpszProxyBypass winhttp.Lpwstr) ([]Proxy, error) {
+	proxies := []Proxy{}
 	proxyBypass := winhttp.LpwstrToString(lpszProxyBypass)
 	if proxyBypass != "" {
-		bypass := p.isLpszProxyBypass(targetUrl, proxyBypass)
-		log.Printf("[proxy.Provider.parseProxyInfo]: lpszProxyBypass=\"%s\", targetUrl=%s, bypass=%t", proxyBypass, targetUrl, bypass)
-		if bypass {
-			return nil, new(notFoundError)
+		if p.isLpszProxyBypass(targetUrl, proxyBypass) {
+			return proxies, nil
 		}
 	}
-	return NewProxy(proxyUrl, src)
+
+	proxyUrlStrList := p.parseLpszProxy(protocol, winhttp.LpwstrToString(lpszProxy))
+	if len(proxyUrlStrList) == 0 {
+		return nil, new(notFoundError)
+	}
+	for _, proxyUrlStr := range proxyUrlStrList {
+		proxyUrl, err := ParseURL(proxyUrlStr, "")
+		if err != nil {
+			log.Printf("Failed to parse proxy URL\"$\"", proxyUrlStr)
+			continue
+		}
+		pr, _ := NewProxy(proxyUrl, src)
+		proxies = append(proxies, pr)
+	}
+	return proxies, nil
 }
 
 /*
-Parse the lpszProxy into a single proxy URL, represented as a string.
+Parse the lpszProxy into a list of proxy URL, represented as a list of string.
 For example:
-	("https", "1.2.3.4") -> "1.2.3.4"
-	("https", "https=1.2.3.4;http=4.5.6.7") -> "1.2.3.4"
-	("https", "") -> ""
-	("https", "http=4.5.6.7") -> ""
+	("https", "1.2.3.4") -> ["1.2.3.4"]
+	("https", "https=1.2.3.4;http=4.5.6.7") -> ["1.2.3.4"]
+	("https", "https=1.2.3.4;https=4.5.6.7") -> ["1.2.3.4","4.5.6.7"]
+	("https", "") -> []
+	("https", "http=4.5.6.7") -> []
 Params:
 	protocol: The protocol of traffic the proxy is to be used for. (i.e. http, https, ftp, socks)
 	lpszProxy: The Lpwstr which represents the proxy value (if any). This value can be optionally separated by protocol.
 Returns:
-	string: The proxy URL (if any) from the lpszProxy value.
+	string: The list of proxy URL (if any) from the lpszProxy value.
 */
 //noinspection SpellCheckingInspection
-func (p *providerWindows) parseLpszProxy(protocol string, lpszProxy string) string {
-	m := ""
+func (p *providerWindows) parseLpszProxy(protocol string, lpszProxy string) []string {
+	proxies := []string{}
+	lpszProxy = strings.TrimSpace(lpszProxy)
+	if len(lpszProxy) == 0 {
+		return proxies
+	}
 	for _, s := range strings.Split(lpszProxy, ";") {
 		parts := strings.SplitN(s, "=", 2)
-		// No protocol?
+		// Include the proxy if protocol matches or if no protocol is specified
 		if len(parts) < 2 {
 			// Assign a match, but keep looking in case we have a protocol specific match
-			m = s
+			proxies = append(proxies, s)
 		} else if strings.TrimSpace(parts[0]) == protocol {
-			m = parts[1]
-			break
+			proxies = append(proxies, parts[1])
 		}
 	}
-	return m
+	return proxies
 }
 
 /*
