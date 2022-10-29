@@ -174,11 +174,8 @@ func Run() {
 	}
 
 	// HTTPS
-	proxy.ConnectDial = func(network, addr string) (net.Conn, error) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		return proxyDialer("https", addr, proxyUrl)(ctx, network, addr)
+	proxy.ConnectDialWithReq = func(req *http.Request, network, addr string) (net.Conn, error) {
+		return proxyDialer("https", addr, proxyUrl)(req.Context(), network, addr)
 	}
 
 	//
