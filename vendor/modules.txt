@@ -14,14 +14,14 @@ github.com/bdwyertech/go-scutil/proxy
 # github.com/bdwyertech/proxyplease v0.1.1-0.20221029172251-2566bb378083
 ## explicit; go 1.12
 github.com/bdwyertech/proxyplease
-# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20221021230609-6e240fc47f6f
-## explicit; go 1.16
+# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20221123005236-07b6d0100900
+## explicit; go 1.17
 github.com/darren/gpac
 # github.com/dlclark/regexp2 v1.7.0
 ## explicit; go 1.13
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
-# github.com/dop251/goja v0.0.0-20221019153710-09250e0eba20
+# github.com/dop251/goja v0.0.0-20221118162653-d4bf6fde1b86
 ## explicit; go 1.16
 github.com/dop251/goja
 github.com/dop251/goja/ast
@@ -31,7 +31,7 @@ github.com/dop251/goja/ftoa/internal/fast
 github.com/dop251/goja/parser
 github.com/dop251/goja/token
 github.com/dop251/goja/unistring
-# github.com/elazarl/goproxy v0.0.0-00010101000000-000000000000 => github.com/bdwyertech/goproxy v0.0.0-20221023183101-a7527e535a15
+# github.com/elazarl/goproxy v0.0.0-20221015165544-a0805db90819 => github.com/bdwyertech/goproxy v0.0.0-20221023183101-a7527e535a15
 ## explicit
 github.com/elazarl/goproxy
 # github.com/go-sourcemap/sourcemap v2.1.3+incompatible
@@ -56,17 +56,17 @@ github.com/mattn/go-isatty
 # github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+# golang.org/x/crypto v0.3.0
 ## explicit; go 1.17
 golang.org/x/crypto/md4
-# golang.org/x/net v0.1.1-0.20221027164007-c63010009c80
+# golang.org/x/net v0.2.0
 ## explicit; go 1.17
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+# golang.org/x/sync v0.1.0
 ## explicit
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.1.0
+# golang.org/x/sys v0.2.0
 ## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -92,4 +92,4 @@ golang.org/x/text/unicode/rangetable
 ## explicit; go 1.9
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20221023183101-a7527e535a15
-# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20221021230609-6e240fc47f6f
+# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20221123005236-07b6d0100900
