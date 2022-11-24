@@ -1,6 +1,7 @@
 package ntlm_proxy
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -114,6 +115,52 @@ func Run() {
 							d := net.Dialer{}
 							return d.DialContext, nil
 						}
+						// Check if we need to tunnel
+						if tunnelPxy, ok := ProxyOverrides[pxy.Host]; ok {
+							var tunnelctx proxyplease.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+								conn, err := proxyplease.NewDialContext(proxyplease.Proxy{
+									URL:       tunnelPxy,
+									Username:  ProxyUser,
+									Password:  ProxyPass,
+									Domain:    ProxyDomain,
+									TargetURL: pxy,
+								})(ctx, network, pxy.Host)
+
+								if err != nil {
+									log.Println(err)
+									return nil, err
+								}
+
+								req := &http.Request{
+									Method: http.MethodConnect,
+									URL:    &url.URL{Opaque: addr, Scheme: scheme},
+									Host:   addr,
+									Header: http.Header{
+										"Proxy-Connection": []string{"Keep-Alive"},
+									},
+								}
+
+								// req.Write(os.Stdout)
+								br := bufio.NewReader(conn)
+								if err = req.Write(conn); err != nil {
+									return conn, err
+								}
+
+								resp, err := http.ReadResponse(br, req)
+								resp.Body.Close()
+								if err != nil {
+									return conn, err
+								}
+
+								if resp.StatusCode == http.StatusOK {
+									return conn, nil
+								}
+								return conn, errors.New(resp.Status)
+							}
+							dialerCache.Set(cacheKey, tunnelctx)
+							return tunnelctx, nil
+						}
+
 						detected = true
 						pxyUrl = pxy
 						break
