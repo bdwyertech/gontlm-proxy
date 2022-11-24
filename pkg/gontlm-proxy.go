@@ -244,7 +244,7 @@ func Run() {
 	//
 	// Connect Handler
 	//
-	var AlwaysMitm goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+	var ConnectHandler goproxy.FuncHttpsHandler = func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 		// HTTPSConnect := &goproxy.ConnectAction{
 		// 	// ConnectMitm enables SSL Interception, required for request filtering over HTTPS.
 		// 	// Action:    goproxy.ConnectMitm,
@@ -256,7 +256,7 @@ func Run() {
 		// return HTTPSConnect, host
 		return goproxy.OkConnect, host
 	}
-	proxy.OnRequest().HandleConnect(AlwaysMitm)
+	proxy.OnRequest().HandleConnect(ConnectHandler)
 
 	//
 	// Request Handling
