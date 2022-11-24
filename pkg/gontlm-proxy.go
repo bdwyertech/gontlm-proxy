@@ -38,7 +38,7 @@ func init() {
 var ProxyUser = os.Getenv("GONTLM_USER")
 var ProxyPass = os.Getenv("GONTLM_PASS")
 var ProxyDomain = os.Getenv("GONTLM_DOMAIN")
-var ProxyOverrides *map[string]*url.URL
+var ProxyOverrides map[string]*url.URL
 var ProxyDialerCacheTimeout = 60 * time.Minute
 
 func Run() {
@@ -109,7 +109,7 @@ func Run() {
 				// Exact Match
 				//
 				for _, host := range hosts {
-					if pxy, ok := (*ProxyOverrides)[strings.ToLower(host)]; ok {
+					if pxy, ok := ProxyOverrides[strings.ToLower(host)]; ok {
 						// If empty (nil) assume direct connection
 						if pxy == nil {
 							d := net.Dialer{}
@@ -172,7 +172,7 @@ func Run() {
 				//
 				if !detected {
 					for _, host := range hosts {
-						for dns, pxy := range *ProxyOverrides {
+						for dns, pxy := range ProxyOverrides {
 							if strings.HasSuffix(strings.ToLower(host), dns) {
 								// If empty (nil) assume direct connection
 								if pxy == nil {
