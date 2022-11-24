@@ -38,6 +38,7 @@ func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error
 		debugf("connect> Could not read response from proxy: %s", err)
 		return conn, err
 	}
+	resp.Body.Close()
 
 	// if StatusOK, no auth is required and proxy is established
 	if resp.StatusCode == http.StatusOK {

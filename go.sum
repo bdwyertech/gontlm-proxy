@@ -8,8 +8,8 @@ github.com/bdwyertech/goproxy v0.0.0-20221023183101-a7527e535a15 h1:YOXEVfA9MsZu
 github.com/bdwyertech/goproxy v0.0.0-20221023183101-a7527e535a15/go.mod h1:Ro8st/ElPeALwNFlcTpWmkr6IoMFfkjXAvTHpevnDsM=
 github.com/bdwyertech/gpac v0.0.0-20221123005236-07b6d0100900 h1:oiuGF3XOd7kueHzVzE1Tu7CABX3mYOdX9S92XLRzbxM=
 github.com/bdwyertech/gpac v0.0.0-20221123005236-07b6d0100900/go.mod h1:5plBDgAhkDfbqCDmxhKZqnd26lQwVSLO/R8b2EmWmMU=
-github.com/bdwyertech/proxyplease v0.1.1-0.20221029172251-2566bb378083 h1:0QF6vyisIcr0KwcqzJJAYqs9/+ocaHdk6aUnAEKLotw=
-github.com/bdwyertech/proxyplease v0.1.1-0.20221029172251-2566bb378083/go.mod h1:seY1bgzh8oC7xJw4NG1vA7+409fVmEyRWGJ2WUMfkLY=
+github.com/bdwyertech/proxyplease v0.1.1-0.20221124181130-2c956e798f18 h1:FWcxj0DhWmg3NRd0GikNAQD4w/w/jLuS00T/4i8HO18=
+github.com/bdwyertech/proxyplease v0.1.1-0.20221124181130-2c956e798f18/go.mod h1:seY1bgzh8oC7xJw4NG1vA7+409fVmEyRWGJ2WUMfkLY=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

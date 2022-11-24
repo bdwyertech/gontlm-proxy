@@ -14,7 +14,7 @@ replace github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-202211230052
 
 require (
 	github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
-	github.com/bdwyertech/proxyplease v0.1.1-0.20221029172251-2566bb378083
+	github.com/bdwyertech/proxyplease v0.1.1-0.20221124181130-2c956e798f18
 	github.com/elazarl/goproxy v0.0.0-20221015165544-a0805db90819
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/kardianos/service v1.2.2
