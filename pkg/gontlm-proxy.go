@@ -119,16 +119,14 @@ func Run() {
 						if tunnelPxy, ok := ProxyOverrides[pxy.Host]; ok {
 							var tunnelctx proxyplease.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 								conn, err := proxyplease.NewDialContext(proxyplease.Proxy{
-									URL:       tunnelPxy,
-									Username:  ProxyUser,
-									Password:  ProxyPass,
-									Domain:    ProxyDomain,
-									TargetURL: pxy,
+									URL:      tunnelPxy,
+									Username: ProxyUser,
+									Password: ProxyPass,
+									Domain:   ProxyDomain,
 								})(ctx, network, pxy.Host)
 
 								if err != nil {
-									log.Println(err)
-									return nil, err
+									return conn, err
 								}
 
 								req := &http.Request{
