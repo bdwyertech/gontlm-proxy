@@ -91,6 +91,8 @@ func Run() {
 	dialerCache.SetTTL(ProxyDialerCacheTimeout)
 	dialerCacheGroup := singleflight.Group{}
 
+	directDialer := new(net.Dialer).DialContext
+
 	proxyDialer := func(scheme, addr string, pxyUrl *url.URL) proxyplease.DialContext {
 		cacheKey := addr
 		if pxyUrl != nil && pxyUrl.Host != "" && ProxyOverrides == nil {
@@ -112,8 +114,7 @@ func Run() {
 					if pxy, ok := ProxyOverrides[strings.ToLower(host)]; ok {
 						// If empty (nil) assume direct connection
 						if pxy == nil {
-							d := net.Dialer{}
-							return d.DialContext, nil
+							return directDialer, nil
 						}
 
 						detected = true
@@ -131,8 +132,7 @@ func Run() {
 							if strings.HasSuffix(strings.ToLower(host), dns) {
 								// If empty (nil) assume direct connection
 								if pxy == nil {
-									d := net.Dialer{}
-									return d.DialContext, nil
+									return directDialer, nil
 								}
 								detected = true
 								pxyUrl = pxy
