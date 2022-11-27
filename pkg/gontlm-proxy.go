@@ -217,6 +217,7 @@ func Run() {
 	// Proxy DialContexts
 	//
 	proxy.Tr.Proxy = nil
+	proxy.Tr.MaxIdleConnsPerHost = 10
 
 	// HTTP
 	proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
