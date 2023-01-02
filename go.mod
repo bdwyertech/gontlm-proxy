@@ -19,7 +19,7 @@ require (
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/kardianos/service v1.2.2
 	github.com/mattn/go-colorable v0.1.13
-	github.com/mattn/go-isatty v0.0.16
+	github.com/mattn/go-isatty v0.0.17
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.2.0
