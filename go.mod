@@ -22,7 +22,7 @@ require (
 	github.com/mattn/go-isatty v0.0.16
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.2.0
+	golang.org/x/sys v0.5.0
 )
 
 require (
@@ -34,7 +34,7 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/launchdarkly/go-ntlmssp v1.0.1 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	h12.io/socks v1.0.3 // indirect
 )
