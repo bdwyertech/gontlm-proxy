@@ -1101,7 +1101,7 @@ func (s *Symbol) ExportType() reflect.Type {
 }
 
 func (s *Symbol) baseObject(r *Runtime) *Object {
-	return r.newPrimitiveObject(s, r.global.SymbolPrototype, "Symbol")
+	return r.newPrimitiveObject(s, r.global.SymbolPrototype, classObject)
 }
 
 func (s *Symbol) hash(*maphash.Hash) uint64 {
@@ -1172,7 +1172,6 @@ func typeErrorResult(throw bool, args ...interface{}) {
 
 func init() {
 	for i := 0; i < 256; i++ {
-		intCache[i] = valueInt(i - 128)
+		intCache[i] = valueInt(i - 256)
 	}
-	_positiveZero = intToValue(0)
 }

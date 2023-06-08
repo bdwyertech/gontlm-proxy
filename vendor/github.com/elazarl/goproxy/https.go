@@ -12,7 +12,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"sync/atomic"
 )
 
@@ -72,13 +71,16 @@ func (proxy *ProxyHttpServer) connectDial(ctx *ProxyCtx, network, addr string) (
 	return proxy.ConnectDial(network, addr)
 }
 
-type halfClosable interface {
-	net.Conn
-	CloseWrite() error
-	CloseRead() error
+func proxyCopy(errc chan<- error, dst, src net.Conn) {
+	_, err := io.Copy(dst, src)
+	if tcpConn, ok := dst.(*net.TCPConn); ok {
+		tcpConn.CloseWrite()
+	}
+	if tcpConn, ok := src.(*net.TCPConn); ok {
+		tcpConn.CloseRead()
+	}
+	errc <- err
 }
-
-var _ halfClosable = (*net.TCPConn)(nil)
 
 func (proxy *ProxyHttpServer) handleHttps(w http.ResponseWriter, r *http.Request) {
 	ctx := &ProxyCtx{Req: r, Session: atomic.AddInt64(&proxy.sess, 1), proxy: proxy, certStore: proxy.CertStore}
@@ -118,30 +120,20 @@ func (proxy *ProxyHttpServer) handleHttps(w http.ResponseWriter, r *http.Request
 		ctx.Logf("Accepting CONNECT to %s", host)
 		proxyClient.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 
-		targetTCP, targetOK := targetSiteCon.(halfClosable)
-		proxyClientTCP, clientOK := proxyClient.(halfClosable)
-		if targetOK && clientOK {
-			// todo: make sure everything is fine
-			go func() {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				go copyAndClose(ctx, targetTCP, proxyClientTCP, &wg)
-				go copyAndClose(ctx, proxyClientTCP, targetTCP, &wg)
-				wg.Wait()
-				proxyClientTCP.Close()
-				targetTCP.Close()
-			}()
-		} else {
-			go func() {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				go copyOrWarn(ctx, targetSiteCon, proxyClient, &wg)
-				go copyOrWarn(ctx, proxyClient, targetSiteCon, &wg)
-				wg.Wait()
-				proxyClient.Close()
-				targetSiteCon.Close()
-			}()
-		}
+		// todo: make sure everything is fine
+		go func() {
+			defer proxyClient.Close()
+			defer targetSiteCon.Close()
+
+			errc := make(chan error, 1)
+			go proxyCopy(errc, targetSiteCon, proxyClient)
+			go proxyCopy(errc, proxyClient, targetSiteCon)
+			for i := 0; i < 2; i++ {
+				if err := <-errc; err != nil {
+					return
+				}
+			}
+		}()
 
 	case ConnectHijack:
 		ctx.Logf("Hijacking CONNECT to %s", host)
@@ -280,24 +272,6 @@ func httpError(w io.WriteCloser, ctx *ProxyCtx, err error) {
 	if err := w.Close(); err != nil {
 		ctx.Warnf("Error closing client connection: %s", err)
 	}
-}
-
-func copyOrWarn(ctx *ProxyCtx, dst io.Writer, src io.Reader, wg *sync.WaitGroup) {
-	if _, err := io.Copy(dst, src); err != nil {
-		ctx.Warnf("Error copying to client: %s", err)
-	}
-	wg.Done()
-}
-
-func copyAndClose(ctx *ProxyCtx, dst, src halfClosable, wg *sync.WaitGroup) {
-	if _, err := io.Copy(dst, src); err != nil {
-		ctx.Warnf("Error copying to client: %s", err)
-	}
-
-	dst.CloseWrite()
-	src.CloseRead()
-
-	wg.Done()
 }
 
 func dialerFromEnv(proxy *ProxyHttpServer) func(network, addr string) (net.Conn, error) {
