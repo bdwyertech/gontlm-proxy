@@ -8,13 +8,13 @@ github.com/alexbrainman/sspi/ntlm
 ## explicit; go 1.16
 github.com/bdwyertech/go-get-proxied/proxy
 github.com/bdwyertech/go-get-proxied/winhttp
-# github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45
+# github.com/bdwyertech/go-scutil v0.0.0-20230606025039-57a4d936729f
 ## explicit; go 1.16
 github.com/bdwyertech/go-scutil/proxy
-# github.com/bdwyertech/proxyplease v0.1.1-0.20221124181130-2c956e798f18
+# github.com/bdwyertech/proxyplease v0.1.1-0.20221126170535-8a386bcb7c7a
 ## explicit; go 1.12
 github.com/bdwyertech/proxyplease
-# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20221123005236-07b6d0100900
+# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20231023175238-585710495f17
 ## explicit; go 1.17
 github.com/darren/gpac
 # github.com/dlclark/regexp2 v1.10.0
@@ -38,7 +38,7 @@ github.com/elazarl/goproxy
 ## explicit
 github.com/go-sourcemap/sourcemap
 github.com/go-sourcemap/sourcemap/internal/base64vlq
-# github.com/google/pprof v0.0.0-20230207041349-798e818bf904
+# github.com/google/pprof v0.0.0-20230228050547-1710fef4ab10
 ## explicit; go 1.19
 github.com/google/pprof/profile
 # github.com/jellydator/ttlcache/v2 v2.11.1
@@ -53,32 +53,31 @@ github.com/launchdarkly/go-ntlmssp
 # github.com/mattn/go-colorable v0.1.13
 ## explicit; go 1.15
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.19
+# github.com/mattn/go-isatty v0.0.20
 ## explicit; go 1.15
 github.com/mattn/go-isatty
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# golang.org/x/crypto v0.9.0
+# golang.org/x/crypto v0.14.0
 ## explicit; go 1.17
 golang.org/x/crypto/md4
-# golang.org/x/net v0.10.0
+# golang.org/x/net v0.17.0
 ## explicit; go 1.17
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sync v0.2.0
-## explicit
-golang.org/x/sync/singleflight
-# golang.org/x/sys v0.8.0
+# golang.org/x/sync v0.4.0
 ## explicit; go 1.17
-golang.org/x/sys/internal/unsafeheader
+golang.org/x/sync/singleflight
+# golang.org/x/sys v0.13.0
+## explicit; go 1.17
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
 golang.org/x/sys/windows/svc
 golang.org/x/sys/windows/svc/eventlog
 golang.org/x/sys/windows/svc/mgr
-# golang.org/x/text v0.9.0
+# golang.org/x/text v0.13.0
 ## explicit; go 1.17
 golang.org/x/text/cases
 golang.org/x/text/collate
@@ -95,4 +94,4 @@ golang.org/x/text/unicode/rangetable
 ## explicit; go 1.9
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20230608195657-05e9c5da7707
-# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20221123005236-07b6d0100900
+# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20231023175238-585710495f17

@@ -28,6 +28,8 @@ type Proxy struct {
 // a supported authentication scheme.
 type DialContext func(ctx context.Context, network, addr string) (net.Conn, error)
 
+var dialer *net.Dialer
+
 // NewDialContext returns a DialContext that can be used in a variety of network types.
 // The function accepts an optional Proxy type parameter.
 func NewDialContext(p Proxy) DialContext {
@@ -38,6 +40,9 @@ func NewDialContext(p Proxy) DialContext {
 	if p.TargetURL == nil {
 		p.TargetURL, _ = url.Parse("https://www.google.com")
 	}
+	if dialer == nil {
+		dialer = &net.Dialer{}
+	}
 	// if no provided Proxy.URL, infer from system settings
 	if p.URL == nil || p.URL.String() == "" {
 		debugf("proxy> No proxy provided. Attempting to infer from system.")
@@ -46,8 +51,7 @@ func NewDialContext(p Proxy) DialContext {
 		// then assume connection is direct.
 		if systemProxy == nil {
 			debugf("proxy> No proxy could be determined. Assuming a direct connection.")
-			d := net.Dialer{}
-			return d.DialContext
+			return dialer.DialContext
 		} else {
 			p.URL = systemProxy.URL()
 		}
@@ -71,7 +75,6 @@ func NewDialContext(p Proxy) DialContext {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		// first establish TLS if https
 		dialProxy := func() (net.Conn, error) {
-			dialer := &net.Dialer{}
 			if p.URL.Scheme == "https" {
 				return tls.DialWithDialer(dialer, "tcp", p.URL.Host, p.TLSConfig)
 			}
