@@ -12,9 +12,22 @@
 This project was inspired by CNTLM & PX.  Operating behind a corporate proxy can make using tooling difficult.  It can also force you into putting your credentials into ENV variables, definitely not good!  The goal here is to leverage the Windows SSPI subsystem to authenticate to your proxy automatically.
 
 ## Usage
-When GoNTLM-Proxy first starts, it reads the configured proxy from the Windows Registry, or can be set via the `GONTLM_PROXY` environment variable.
+When GoNTLM-Proxy first starts, it reads the configured proxy from the Windows Registry `SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings`, or can be set via the `GONTLM_PROXY` environment variable.
 
 By default, GoNTLM-Proxy listens locally on port 3128, however this can be set via the `GONTLM_BIND` environment variable.
+
+## Available environment variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| GONTLM_PROXY | On Win: from registry.<br>On MacOS: from `scutil`.<br>On others: "" | The upstream proxy URL |
+| GONTLM_BIND | "http://0.0.0.0:3128" | This defines on which IP and port the proxy will be listen |
+| GONTLM_USER | "" | The Username which will be used for the upstream proxy for authentication |
+| GONTLM_PASS | "" | The Password which will be used for the upstream proxy for authentication |
+| GONTLM_DOMAIN | "" | The Domain which will be used for the upstream proxy for authentication |
+| GONTLM_CA | `USERS_HOMEDIR`/.gontlm-ca.pem | The Certificate Authority which will be used for TLS communication |
+| GONTLM_PROXY_VERBOSE | false | This set the loglevel for the logging library |
+| GONTLM_PROXY_IDLE_TIMEOUT | unset | This set the [IdleTimeout](https://pkg.go.dev/net/http#Server) for the proxy. The format is documented in [ParseDuration](https://pkg.go.dev/time#ParseDuration) |
 
 ## Background Task
 Running this as a background task is likely preferred over running it as a service.  Unfortunately, Windows does not let you run services as users without specifying credentials unless you turn off some Security Policy and I do not recommend this.  The whole purpose of this project is to remove the need for hardcoded credentials after all.
