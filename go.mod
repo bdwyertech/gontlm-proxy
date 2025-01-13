@@ -18,11 +18,11 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20221015165544-a0805db90819
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/kardianos/service v1.2.2
-	github.com/mattn/go-colorable v0.1.13
+	github.com/mattn/go-colorable v0.1.14
 	github.com/mattn/go-isatty v0.0.20
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.28.0
+	golang.org/x/sys v0.29.0
 )
 
 require (
