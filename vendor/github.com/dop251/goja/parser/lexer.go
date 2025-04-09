@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"unicode"
@@ -408,9 +409,9 @@ func (self *_parser) scan() (tkn token.Token, literal string, parsedLiteral unis
 					tkn = token.STRICT_NOT_EQUAL
 				}
 			case '&':
-				tkn = self.switch3(token.AND, token.AND_ASSIGN, '&', token.LOGICAL_AND)
+				tkn = self.switch4(token.AND, token.AND_ASSIGN, '&', token.LOGICAL_AND, token.LOGICAL_AND_ASSIGN)
 			case '|':
-				tkn = self.switch3(token.OR, token.OR_ASSIGN, '|', token.LOGICAL_OR)
+				tkn = self.switch4(token.OR, token.OR_ASSIGN, '|', token.LOGICAL_OR, token.LOGICAL_OR_ASSIGN)
 			case '~':
 				tkn = token.BITWISE_NOT
 			case '?':
@@ -419,7 +420,12 @@ func (self *_parser) scan() (tkn token.Token, literal string, parsedLiteral unis
 					tkn = token.QUESTION_DOT
 				} else if self.chr == '?' {
 					self.read()
-					tkn = token.COALESCE
+					if self.chr == '=' {
+						self.read()
+						tkn = token.COALESCE_ASSIGN
+					} else {
+						tkn = token.COALESCE
+					}
 				} else {
 					tkn = token.QUESTION_MARK
 				}
@@ -632,9 +638,13 @@ func (self *_parser) skipWhiteSpace() {
 	}
 }
 
-func (self *_parser) scanMantissa(base int) {
-	for digitValue(self.chr) < base {
+func (self *_parser) scanMantissa(base int, allowSeparator bool) {
+	for digitValue(self.chr) < base || (allowSeparator && self.chr == '_') {
+		afterUnderscore := self.chr == '_'
 		self.read()
+		if afterUnderscore && !isDigit(self.chr, base) {
+			self.error(self.chrOffset, "Only one underscore is allowed as numeric separator")
+		}
 	}
 }
 
@@ -911,7 +921,9 @@ func parseNumberLiteral(literal string) (value interface{}, err error) {
 	err = parseIntErr
 
 	if err.(*strconv.NumError).Err == strconv.ErrRange {
-		if len(literal) > 2 && literal[0] == '0' && (literal[1] == 'X' || literal[1] == 'x') {
+		if len(literal) > 2 &&
+			literal[0] == '0' && (literal[1] == 'X' || literal[1] == 'x') &&
+			literal[len(literal)-1] != 'n' {
 			// Could just be a very large number (e.g. 0x8000000000000000)
 			var value float64
 			literal = literal[2:]
@@ -924,6 +936,21 @@ func parseNumberLiteral(literal string) (value interface{}, err error) {
 			}
 			return value, nil
 		}
+	}
+
+	if len(literal) > 1 && literal[len(literal)-1] == 'n' {
+		if literal[0] == '0' {
+			if len(literal) > 2 && isDecimalDigit(rune(literal[1])) {
+				goto error
+			}
+		}
+		// Parse as big.Int
+		bigInt := new(big.Int)
+		_, ok := bigInt.SetString(literal[:len(literal)-1], 0)
+		if !ok {
+			goto error
+		}
+		return bigInt, nil
 	}
 
 error:
@@ -1122,7 +1149,7 @@ func (self *_parser) scanNumericLiteral(decimalPoint bool) (token.Token, string)
 
 	if decimalPoint {
 		offset--
-		self.scanMantissa(10)
+		self.scanMantissa(10, true)
 	} else {
 		if self.chr == '0' {
 			self.read()
@@ -1138,7 +1165,7 @@ func (self *_parser) scanNumericLiteral(decimalPoint bool) (token.Token, string)
 				// no-op
 			default:
 				// legacy octal
-				self.scanMantissa(8)
+				self.scanMantissa(8, false)
 				goto end
 			}
 			if base > 0 {
@@ -1146,15 +1173,15 @@ func (self *_parser) scanNumericLiteral(decimalPoint bool) (token.Token, string)
 				if !isDigit(self.chr, base) {
 					return token.ILLEGAL, self.str[offset:self.chrOffset]
 				}
-				self.scanMantissa(base)
+				self.scanMantissa(base, true)
 				goto end
 			}
 		} else {
-			self.scanMantissa(10)
+			self.scanMantissa(10, true)
 		}
 		if self.chr == '.' {
 			self.read()
-			self.scanMantissa(10)
+			self.scanMantissa(10, true)
 		}
 	}
 
@@ -1165,12 +1192,16 @@ func (self *_parser) scanNumericLiteral(decimalPoint bool) (token.Token, string)
 		}
 		if isDecimalDigit(self.chr) {
 			self.read()
-			self.scanMantissa(10)
+			self.scanMantissa(10, true)
 		} else {
 			return token.ILLEGAL, self.str[offset:self.chrOffset]
 		}
 	}
 end:
+	if self.chr == 'n' || self.chr == 'N' {
+		self.read()
+		return tkn, self.str[offset:self.chrOffset]
+	}
 	if isIdentifierStart(self.chr) || isDecimalDigit(self.chr) {
 		return token.ILLEGAL, self.str[offset:self.chrOffset]
 	}

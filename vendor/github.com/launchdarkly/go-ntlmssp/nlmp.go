@@ -10,8 +10,9 @@ package ntlmssp
 import (
 	"crypto/hmac"
 	"crypto/md5"
-	"golang.org/x/crypto/md4"
 	"strings"
+
+	"golang.org/x/crypto/md4" //nolint: staticcheck
 )
 
 func getNtlmV2Hash(password, username, target string) []byte {

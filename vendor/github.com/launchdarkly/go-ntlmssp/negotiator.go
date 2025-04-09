@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -21,12 +20,12 @@ func GetDomain(user string) (string, string) {
 	return user, domain
 }
 
-//Negotiator is a http.Roundtripper decorator that automatically
-//converts basic authentication to NTLM/Negotiate authentication when appropriate.
+// Negotiator is a http.Roundtripper decorator that automatically
+// converts basic authentication to NTLM/Negotiate authentication when appropriate.
 type Negotiator struct{ http.RoundTripper }
 
-//RoundTrip sends the request to the server, handling any authentication
-//re-sends as needed.
+// RoundTrip sends the request to the server, handling any authentication
+// re-sends as needed.
 func (l Negotiator) RoundTrip(req *http.Request) (res *http.Response, err error) {
 	// Use default round tripper if not provided
 	rt := l.RoundTripper
@@ -47,7 +46,7 @@ func (l Negotiator) RoundTrip(req *http.Request) (res *http.Response, err error)
 		}
 
 		req.Body.Close()
-		req.Body = ioutil.NopCloser(bytes.NewReader(body.Bytes()))
+		req.Body = io.NopCloser(bytes.NewReader(body.Bytes()))
 	}
 	// first try anonymous, in case the server still finds us
 	// authenticated from previous traffic
@@ -64,9 +63,11 @@ func (l Negotiator) RoundTrip(req *http.Request) (res *http.Response, err error)
 	if !resauth.IsNegotiate() && !resauth.IsNTLM() {
 		// Unauthorized, Negotiate not requested, let's try with basic auth
 		req.Header.Set("Authorization", string(reqauth))
-		io.Copy(ioutil.Discard, res.Body)
+		if _, err := io.Copy(io.Discard, res.Body); err != nil {
+			return nil, err
+		}
 		res.Body.Close()
-		req.Body = ioutil.NopCloser(bytes.NewReader(body.Bytes()))
+		req.Body = io.NopCloser(bytes.NewReader(body.Bytes()))
 
 		res, err = rt.RoundTrip(req)
 		if err != nil {
@@ -80,7 +81,9 @@ func (l Negotiator) RoundTrip(req *http.Request) (res *http.Response, err error)
 
 	if resauth.IsNegotiate() || resauth.IsNTLM() {
 		// 401 with request:Basic and response:Negotiate
-		io.Copy(ioutil.Discard, res.Body)
+		if _, err := io.Copy(io.Discard, res.Body); err != nil {
+			return nil, err
+		}
 		res.Body.Close()
 
 		// recycle credentials
@@ -104,7 +107,7 @@ func (l Negotiator) RoundTrip(req *http.Request) (res *http.Response, err error)
 			req.Header.Set("Authorization", "Negotiate "+base64.StdEncoding.EncodeToString(negotiateMessage))
 		}
 
-		req.Body = ioutil.NopCloser(bytes.NewReader(body.Bytes()))
+		req.Body = io.NopCloser(bytes.NewReader(body.Bytes()))
 
 		res, err = rt.RoundTrip(req)
 		if err != nil {
@@ -121,7 +124,9 @@ func (l Negotiator) RoundTrip(req *http.Request) (res *http.Response, err error)
 			// Negotiation failed, let client deal with response
 			return res, nil
 		}
-		io.Copy(ioutil.Discard, res.Body)
+		if _, err := io.Copy(io.Discard, res.Body); err != nil {
+			return nil, err
+		}
 		res.Body.Close()
 
 		// send authenticate
@@ -135,9 +140,9 @@ func (l Negotiator) RoundTrip(req *http.Request) (res *http.Response, err error)
 			req.Header.Set("Authorization", "Negotiate "+base64.StdEncoding.EncodeToString(authenticateMessage))
 		}
 
-		req.Body = ioutil.NopCloser(bytes.NewReader(body.Bytes()))
+		req.Body = io.NopCloser(bytes.NewReader(body.Bytes()))
 
-		res, err = rt.RoundTrip(req)
+		return rt.RoundTrip(req)
 	}
 
 	return res, err

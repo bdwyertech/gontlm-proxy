@@ -24,6 +24,6 @@ func fromUnicode(d []byte) (string, error) {
 func toUnicode(s string) []byte {
 	uints := utf16.Encode([]rune(s))
 	b := bytes.Buffer{}
-	binary.Write(&b, binary.LittleEndian, &uints)
+	binary.Write(&b, binary.LittleEndian, &uints) //nolint: errcheck
 	return b.Bytes()
 }
