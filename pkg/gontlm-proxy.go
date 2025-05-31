@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
+
 	// "regexp"
 	"strings"
 	"time"
@@ -217,7 +219,30 @@ func Run() {
 	// Proxy DialContexts
 	//
 	proxy.Tr.Proxy = nil
-	proxy.Tr.MaxIdleConnsPerHost = 10
+	proxy.Tr.MaxIdleConns = func() int {
+		if v := os.Getenv("GONTLM_MAX_IDLE_CONNS"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				return n
+			}
+		}
+		return 50 // Bluecoat-friendly default
+	}()
+	proxy.Tr.MaxIdleConnsPerHost = func() int {
+		if v := os.Getenv("GONTLM_MAX_IDLE_CONNS_PER_HOST"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				return n
+			}
+		}
+		return 10 // Bluecoat-friendly default
+	}()
+	proxy.Tr.IdleConnTimeout = func() time.Duration {
+		if v := os.Getenv("GONTLM_IDLE_CONN_TIMEOUT"); v != "" {
+			if d, err := time.ParseDuration(v); err == nil {
+				return d
+			}
+		}
+		return 10 * time.Second // Bluecoat-friendly default
+	}()
 
 	// HTTP
 	proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
