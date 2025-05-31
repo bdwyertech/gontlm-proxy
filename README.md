@@ -29,6 +29,27 @@ By default, GoNTLM-Proxy listens locally on port 3128, however this can be set v
 | GONTLM_PROXY_VERBOSE | false | This set the loglevel for the logging library |
 | GONTLM_PROXY_IDLE_TIMEOUT | unset | This set the [IdleTimeout](https://pkg.go.dev/net/http#Server) for the proxy. The format is documented in [ParseDuration](https://pkg.go.dev/time#ParseDuration) |
 
+## Connection Pooling and Timeout Defaults
+
+By default, gontlm-proxy is tuned for compatibility with aggressive enterprise proxies, such as Bluecoat (Symantec ProxySG), which are known to close idle connections quickly. These defaults help avoid connection reuse errors and connection resets in such environments.
+
+**Default values:**
+- `MaxIdleConns`: 50
+- `MaxIdleConnsPerHost`: 10
+- `IdleConnTimeout`: 10s
+
+You can override these defaults using the following environment variables:
+- `GONTLM_MAX_IDLE_CONNS`
+- `GONTLM_MAX_IDLE_CONNS_PER_HOST`
+- `GONTLM_IDLE_CONN_TIMEOUT` (e.g., `10s`, `30s`)
+
+**Why these defaults?**
+- Bluecoat/Symantec ProxySG proxies often close idle TCP connections after 10–15 seconds. See:
+  - [Symantec Blue Coat ProxySG—TCP Idle Timeout](https://knowledge.broadcom.com/external/article/16686/what-is-the-default-tcp-idle-timeout-on.html)
+  - [Go issue: Bluecoat closes idle connections](https://github.com/golang/go/issues/16465)
+  - [Stack Overflow: Go HTTP client and Bluecoat](https://stackoverflow.com/questions/35522732/golang-http-client-bluecoat-proxy-connection-reset)
+- These settings are safe for most environments, but users with less aggressive proxies can increase these values for better performance.
+
 ## Background Task
 Running this as a background task is likely preferred over running it as a service.  Unfortunately, Windows does not let you run services as users without specifying credentials unless you turn off some Security Policy and I do not recommend this.  The whole purpose of this project is to remove the need for hardcoded credentials after all.
 
