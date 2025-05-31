@@ -45,7 +45,6 @@ You can override these defaults using the following environment variables:
 
 **Why these defaults?**
 - Bluecoat/Symantec ProxySG proxies often close idle TCP connections after 10–15 seconds. See:
-  - [Symantec Blue Coat ProxySG—TCP Idle Timeout](https://knowledge.broadcom.com/external/article/16686/what-is-the-default-tcp-idle-timeout-on.html)
   - [Go issue: Bluecoat closes idle connections](https://github.com/golang/go/issues/16465)
   - [Stack Overflow: Go HTTP client and Bluecoat](https://stackoverflow.com/questions/35522732/golang-http-client-bluecoat-proxy-connection-reset)
 - These settings are safe for most environments, but users with less aggressive proxies can increase these values for better performance.
