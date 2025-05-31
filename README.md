@@ -44,10 +44,7 @@ You can override these defaults using the following environment variables:
 - `GONTLM_IDLE_CONN_TIMEOUT` (e.g., `10s`, `30s`)
 
 **Why these defaults?**
-- Bluecoat/Symantec ProxySG proxies often close idle TCP connections after 10–15 seconds. See:
-  - [Go issue: Bluecoat closes idle connections](https://github.com/golang/go/issues/16465)
-  - [Stack Overflow: Go HTTP client and Bluecoat](https://stackoverflow.com/questions/35522732/golang-http-client-bluecoat-proxy-connection-reset)
-- These settings are safe for most environments, but users with less aggressive proxies can increase these values for better performance.
+- Bluecoat/Symantec ProxySG proxies and similar enterprise proxies often close idle TCP connections after 10–15 seconds. These values are based on community experience and best practices for enterprise proxy compatibility. If your environment is less aggressive, you can increase these values for better performance.
 
 ## Background Task
 Running this as a background task is likely preferred over running it as a service.  Unfortunately, Windows does not let you run services as users without specifying credentials unless you turn off some Security Policy and I do not recommend this.  The whole purpose of this project is to remove the need for hardcoded credentials after all.
