@@ -17,12 +17,12 @@ require (
 	github.com/bdwyertech/proxyplease v0.1.1-0.20221126170535-8a386bcb7c7a
 	github.com/elazarl/goproxy v0.0.0-20221015165544-a0805db90819
 	github.com/jellydator/ttlcache/v2 v2.11.1
-	github.com/kardianos/service v1.2.2
+	github.com/kardianos/service v1.2.4
 	github.com/mattn/go-colorable v0.1.14
 	github.com/mattn/go-isatty v0.0.20
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sync v0.13.0
-	golang.org/x/sys v0.32.0
+	golang.org/x/sys v0.34.0
 )
 
 require (
