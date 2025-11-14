@@ -14,8 +14,8 @@ github.com/bdwyertech/go-scutil/proxy
 # github.com/bdwyertech/proxyplease v0.1.1-0.20251114174812-28ae43a69614
 ## explicit; go 1.24.0
 github.com/bdwyertech/proxyplease
-# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20250409141519-3df5038d7bd1
-## explicit; go 1.22
+# github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af => github.com/bdwyertech/gpac v0.0.0-20251114181104-f2138a2cb97f
+## explicit; go 1.24.0
 github.com/darren/gpac
 # github.com/dlclark/regexp2 v1.11.5
 ## explicit; go 1.13
@@ -41,9 +41,9 @@ github.com/go-sourcemap/sourcemap/internal/base64vlq
 # github.com/google/pprof v0.0.0-20251007162407-5df77e3f7d1d
 ## explicit; go 1.24.0
 github.com/google/pprof/profile
-# github.com/jellydator/ttlcache/v2 v2.11.1
-## explicit; go 1.15
-github.com/jellydator/ttlcache/v2
+# github.com/jellydator/ttlcache/v3 v3.4.0
+## explicit; go 1.23.0
+github.com/jellydator/ttlcache/v3
 # github.com/kardianos/service v1.2.4
 ## explicit; go 1.23.0
 github.com/kardianos/service
@@ -94,4 +94,4 @@ golang.org/x/text/unicode/rangetable
 ## explicit; go 1.9
 h12.io/socks
 # github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20230608195657-05e9c5da7707
-# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20250409141519-3df5038d7bd1
+# github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20251114181104-f2138a2cb97f

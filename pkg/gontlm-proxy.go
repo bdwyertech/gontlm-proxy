@@ -20,7 +20,7 @@ import (
 
 	"github.com/bdwyertech/proxyplease"
 	"github.com/elazarl/goproxy"
-	"github.com/jellydator/ttlcache/v2"
+	"github.com/jellydator/ttlcache/v3"
 	"golang.org/x/sync/singleflight"
 	// "github.com/bhendo/concord"
 	// "github.com/bhendo/concord/handshakers"
@@ -89,8 +89,7 @@ func Run() {
 	//
 	// LRU Cache: Memoize DialContexts for 60 minutes
 	//
-	dialerCache := ttlcache.NewCache()
-	dialerCache.SetTTL(ProxyDialerCacheTimeout)
+	dialerCache := ttlcache.New[string, proxyplease.DialContext](ttlcache.WithTTL[string, proxyplease.DialContext](ProxyDialerCacheTimeout))
 	dialerCacheGroup := singleflight.Group{}
 
 	directDialer := new(net.Dialer).DialContext
@@ -101,8 +100,8 @@ func Run() {
 			cacheKey = pxyUrl.Host
 		}
 
-		if dctx, err := dialerCache.Get(cacheKey); err == nil {
-			return dctx.(proxyplease.DialContext)
+		if dctx := dialerCache.Get(cacheKey); dctx != nil {
+			return dctx.Value()
 		}
 
 		dctx, err, _ := dialerCacheGroup.Do(cacheKey, func() (pxyCtx interface{}, err error) {
@@ -190,7 +189,7 @@ func Run() {
 							}
 							return conn, errors.New(resp.Status)
 						}
-						dialerCache.Set(cacheKey, tunnelctx)
+						dialerCache.Set(cacheKey, tunnelctx, ttlcache.DefaultTTL)
 						return tunnelctx, nil
 					}
 				}
@@ -204,7 +203,7 @@ func Run() {
 				TargetURL: &url.URL{Host: addr, Scheme: scheme},
 			})
 
-			err = dialerCache.Set(cacheKey, pxyCtx)
+			dialerCache.Set(cacheKey, pxyCtx.(proxyplease.DialContext), ttlcache.DefaultTTL)
 
 			return
 		})

@@ -4,7 +4,7 @@ go 1.24.0
 
 replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20230608195657-05e9c5da7707
 
-replace github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20250409141519-3df5038d7bd1
+replace github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20251114181104-f2138a2cb97f
 
 // replace github.com/aus/proxyplease => ../proxyplease
 
@@ -16,7 +16,7 @@ require (
 	github.com/bdwyertech/go-scutil v0.0.0-20230606025039-57a4d936729f
 	github.com/bdwyertech/proxyplease v0.1.1-0.20251114174812-28ae43a69614
 	github.com/elazarl/goproxy v0.0.0-20221015165544-a0805db90819
-	github.com/jellydator/ttlcache/v2 v2.11.1
+	github.com/jellydator/ttlcache/v3 v3.4.0
 	github.com/kardianos/service v1.2.4
 	github.com/mattn/go-colorable v0.1.14
 	github.com/mattn/go-isatty v0.0.20

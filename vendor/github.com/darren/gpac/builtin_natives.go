@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
-	"github.com/jellydator/ttlcache/v2"
+	"github.com/jellydator/ttlcache/v3"
 )
 
 var builtinNatives = map[string]func(*goja.Runtime) func(call goja.FunctionCall) goja.Value{
@@ -13,21 +13,11 @@ var builtinNatives = map[string]func(*goja.Runtime) func(call goja.FunctionCall)
 	"myIpAddress": myIPAddress,
 }
 
-//
 // TTL Cache: Memoize DNS Lookups for 5 Minutes
-//
-var dnsCachier *ttlcache.Cache
-
-func dnsCache() *ttlcache.Cache {
-	if dnsCachier != nil {
-		return dnsCachier
-	}
-	dnsCachier = ttlcache.NewCache()
-	dnsCachier.SetTTL(5 * time.Minute)
-	dnsCachier.SkipTTLExtensionOnHit(true)
-
-	return dnsCachier
-}
+var dnsCachier = ttlcache.New(
+	ttlcache.WithTTL[string, string](5*time.Minute),
+	ttlcache.WithDisableTouchOnHit[string, string](),
+)
 
 func dnsResolve(vm *goja.Runtime) func(call goja.FunctionCall) goja.Value {
 	return func(call goja.FunctionCall) goja.Value {
@@ -38,8 +28,8 @@ func dnsResolve(vm *goja.Runtime) func(call goja.FunctionCall) goja.Value {
 
 		host := arg.String()
 
-		if dctx, err := dnsCache().Get(host); err == nil {
-			return vm.ToValue(dctx.(string))
+		if dctx := dnsCachier.Get(host); dctx != nil {
+			return vm.ToValue(dctx.Value())
 		}
 
 		ips, err := net.LookupIP(host)
@@ -47,7 +37,7 @@ func dnsResolve(vm *goja.Runtime) func(call goja.FunctionCall) goja.Value {
 			return goja.Null()
 		}
 		ipAddr := ips[0].String()
-		dnsCache().Set(host, ipAddr)
+		dnsCachier.Set(host, ipAddr, ttlcache.DefaultTTL)
 
 		return vm.ToValue(ipAddr)
 	}
