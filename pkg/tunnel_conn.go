@@ -163,7 +163,7 @@ func (ic *instrumentedConn) Close() error {
 		"bytes_read":    ic.bytesRead.Load(),
 		"bytes_written": ic.bytesWritten.Load(),
 		"chunks_read":   ic.chunksRead.Load(),
-	}).Info("Tunnel closed")
+	}).Debug("Tunnel closed")
 	return ic.Conn.Close()
 }
 
@@ -175,7 +175,7 @@ func (ic *instrumentedConn) logConnectionError(op string, err error) {
 	lastActivity := max(ic.lastRead.Load(), ic.lastWrite.Load())
 	idle := time.Since(time.Unix(0, lastActivity))
 
-	ic.logger.WithFields(log.Fields{
+	entry := ic.logger.WithFields(log.Fields{
 		"kind":          string(kind),
 		"op":            op,
 		"target":        ic.target,
@@ -185,7 +185,18 @@ func (ic *instrumentedConn) logConnectionError(op string, err error) {
 		"bytes_written": ic.bytesWritten.Load(),
 		"chunks_read":   ic.chunksRead.Load(),
 		"error":         err.Error(),
-	}).Warn("Tunnel connection error")
+	})
+
+	// Benign, expected terminations (graceful close by the remote or the
+	// client going away) are logged at Debug to avoid flooding the default
+	// Info-level output. Genuine transport failures (upstream reset/timeout)
+	// and unclassified errors remain at Warn as diagnostic signal.
+	switch kind {
+	case errKindCleanEOF, errKindClientGone:
+		entry.Debug("Tunnel connection error")
+	default:
+		entry.Warn("Tunnel connection error")
+	}
 }
 
 // startIdleWatchdog launches a goroutine that logs once each time the tunnel

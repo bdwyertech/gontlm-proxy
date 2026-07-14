@@ -54,6 +54,8 @@ Upstream tunnel sockets (the connections gontlm-proxy opens to the upstream prox
 
 Optionally, set `GONTLM_TUNNEL_IDLE_WARN` (e.g. `10s`) to log a warning whenever an upstream tunnel stays idle past that threshold. The warning fires once per idle episode and re-arms after the next read or write, making it useful for diagnosing idle-timeout drops without flooding the logs. It is disabled when unset or `0`.
 
+Tunnel lifecycle logging is level-aware to keep the default (`Info`) output quiet. The per-connection `Tunnel closed` summary and expected terminations — a graceful close by the remote (`clean_eof`) or the client going away (`client_gone`) — are logged at `Debug`. Genuine transport failures (`upstream_reset`, `upstream_timeout`) and unclassified errors (`unknown`) are logged at `Warn` so they remain visible as diagnostic signal. Enable verbose/debug logging (`GONTLM_PROXY_VERBOSE`) to see the full per-tunnel lifecycle.
+
 ## Background Task
 Running this as a background task is likely preferred over running it as a service.  Unfortunately, Windows does not let you run services as users without specifying credentials unless you turn off some Security Policy and I do not recommend this.  The whole purpose of this project is to remove the need for hardcoded credentials after all.
 
