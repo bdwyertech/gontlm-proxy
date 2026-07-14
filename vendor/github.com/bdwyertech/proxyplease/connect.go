@@ -10,14 +10,18 @@ import (
 )
 
 func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn, error) {
-	// establish TCP with proxy. baseDial will negoiate TLS if needed.
+	// establish TCP with proxy. baseDial will negotiate TLS if needed.
 	conn, err := baseDial()
 	if err != nil {
 		debugf("connect> Could not call dial context with proxy: %s", err)
-		return conn, err
+		return nil, err
 	}
 
-	// build and write first CONNECT request
+	// Single buffered reader for this connection — threaded into sub-dialers
+	// so that any bytes buffered past the response boundary are not lost.
+	br := bufio.NewReader(conn)
+
+	// build and write first CONNECT request (probe)
 	h := p.Headers.Clone()
 	h.Set("Proxy-Connection", "Keep-Alive")
 	connect := &http.Request{
@@ -26,17 +30,18 @@ func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error
 		Host:   addr,
 		Header: h,
 	}
-	if err := connect.Write(conn); err != nil {
+	if err := connect.WriteProxy(conn); err != nil {
 		debugf("connect> CONNECT to proxy failed: %s", err)
-		return conn, err
+		conn.Close()
+		return nil, err
 	}
 
 	// read first response
-	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, connect)
 	if err != nil {
 		debugf("connect> Could not read response from proxy: %s", err)
-		return conn, err
+		conn.Close()
+		return nil, err
 	}
 	resp.Body.Close()
 
@@ -52,6 +57,7 @@ func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error
 
 		// read authentication scheme options
 		schemes := resp.Header["Proxy-Authenticate"]
+		var lastErr error
 		for _, s := range schemes {
 			// only test for first word in scheme
 			trimmed := strings.Split(s, " ")[0]
@@ -61,35 +67,62 @@ func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error
 					debugf("connect> Skipping NTLM due to AuthSchemeFilter")
 					continue
 				}
-				conn, err = dialNTLM(p, addr, baseDial)
+				c, err := dialNTLM(p, addr, conn, br)
 				if err != nil {
 					debugf("connect> NTLM authentication failed. Trying next available scheme.")
+					lastErr = err
+					// Clean fallthrough: close failed conn, dial fresh for next scheme
+					conn.Close()
+					conn, err = baseDial()
+					if err != nil {
+						debugf("connect> Could not re-dial for next scheme: %s", err)
+						return nil, err
+					}
+					br = bufio.NewReader(conn)
 					continue
 				}
-				return conn, err
+				return c, nil
 			case "Basic", "BASIC":
 				if !contains(p.AuthSchemeFilter, "Basic") {
 					debugf("connect> Skipping Basic due to AuthSchemeFilter")
 					continue
 				}
-				conn, err = dialBasic(p, addr, baseDial)
+				c, err := dialBasic(p, addr, conn, br)
 				if err != nil {
 					debugf("connect> Basic authentication failed. Trying next available scheme.")
+					lastErr = err
+					// Clean fallthrough: close failed conn, dial fresh for next scheme
+					conn.Close()
+					conn, err = baseDial()
+					if err != nil {
+						debugf("connect> Could not re-dial for next scheme: %s", err)
+						return nil, err
+					}
+					br = bufio.NewReader(conn)
 					continue
 				}
-				return conn, err
+				return c, nil
 
 			case "Negotiate", "NEGOTIATE":
 				if !contains(p.AuthSchemeFilter, "Negotiate") {
 					debugf("connect> Skipping Negotiate due to AuthSchemeFilter")
 					continue
 				}
-				conn, err = dialNegotiate(p, addr, baseDial)
+				c, err := dialNegotiate(p, addr, conn, br)
 				if err != nil {
 					debugf("connect> Negotiate authentication failed. Trying next available scheme.")
+					lastErr = err
+					// Clean fallthrough: close failed conn, dial fresh for next scheme
+					conn.Close()
+					conn, err = baseDial()
+					if err != nil {
+						debugf("connect> Could not re-dial for next scheme: %s", err)
+						return nil, err
+					}
+					br = bufio.NewReader(conn)
 					continue
 				}
-				return conn, err
+				return c, nil
 
 			case "Kerberos":
 				debugf("connect> Kerberos not implemented yet. Trying next available scheme.")
@@ -106,11 +139,16 @@ func dialAndNegotiateHTTP(p Proxy, addr string, baseDial func() (net.Conn, error
 		}
 
 		debugf("connect> No proxy authentication completed successfully")
-		return conn, err
+		conn.Close()
+		if lastErr != nil {
+			return nil, lastErr
+		}
+		return nil, errors.New("no proxy authentication scheme succeeded")
 	}
 
 	debugf("connect> Unhandled HTTP status, got: %d", resp.StatusCode)
-	return conn, errors.New(http.StatusText(resp.StatusCode))
+	conn.Close()
+	return nil, errors.New(http.StatusText(resp.StatusCode))
 }
 
 func contains(s []string, e string) bool {

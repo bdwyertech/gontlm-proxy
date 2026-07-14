@@ -76,7 +76,8 @@ func NewDialContext(p Proxy) DialContext {
 		// first establish TLS if https
 		dialProxy := func() (net.Conn, error) {
 			if p.URL.Scheme == "https" {
-				return tls.DialWithDialer(dialer, "tcp", p.URL.Host, p.TLSConfig)
+				td := &tls.Dialer{NetDialer: dialer, Config: p.TLSConfig}
+				return td.DialContext(ctx, "tcp", p.URL.Host)
 			}
 			return dialer.DialContext(ctx, network, p.URL.Host)
 		}

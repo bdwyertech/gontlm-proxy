@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package proxyplease
@@ -16,16 +17,11 @@ import (
 	"github.com/alexbrainman/sspi/ntlm"
 )
 
-func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn, error) {
+func dialNTLM(p Proxy, addr string, conn net.Conn, br *bufio.Reader) (net.Conn, error) {
 	debugf("ntlm> Attempting to authenticate")
 
-	conn, err := baseDial()
-	if err != nil {
-		debugf("ntlm> Could not call dial context with proxy: %s", err)
-		return conn, err
-	}
-
 	var cred *sspi.Credentials
+	var err error
 	if p.Domain != "" && p.Username != "" && p.Password != "" {
 		debugf("ntlm> Using supplied credentials")
 		cred, err = ntlm.AcquireUserCredentials(p.Domain, p.Username, p.Password)
@@ -59,7 +55,6 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		debugf("ntlm> Could not write negotiate message to proxy: %s", err)
 		return conn, err
 	}
-	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, connect)
 	if err != nil {
 		debugf("ntlm> Could not read negotiate response from proxy: %s", err)
@@ -109,7 +104,6 @@ func dialNTLM(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn
 		debugf("ntlm> Could not write authenticate message to proxy: %s", err)
 		return conn, err
 	}
-	br = bufio.NewReader(conn)
 	resp, err = http.ReadResponse(br, connect)
 	if err != nil {
 		debugf("ntlm> Could not read authenticate response from proxy: %s", err)

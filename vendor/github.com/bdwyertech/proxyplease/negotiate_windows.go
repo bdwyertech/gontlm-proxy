@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package proxyplease
@@ -16,14 +17,8 @@ import (
 	"github.com/alexbrainman/sspi/negotiate"
 )
 
-func dialNegotiate(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn, error) {
+func dialNegotiate(p Proxy, addr string, conn net.Conn, br *bufio.Reader) (net.Conn, error) {
 	debugf("negotiate> Attempting to authenticate")
-
-	conn, err := baseDial()
-	if err != nil {
-		debugf("negotiate> Could not call dial context with proxy: %s", err)
-		return conn, err
-	}
 
 	h, err := canonicalizeHostname(p.URL.Hostname())
 	if err != nil {
@@ -58,11 +53,10 @@ func dialNegotiate(p Proxy, addr string, baseDial func() (net.Conn, error)) (net
 		Host:   addr,
 		Header: head,
 	}
-	if err := connect.Write(conn); err != nil {
+	if err := connect.WriteProxy(conn); err != nil {
 		debugf("negotiate> Could not write token message to proxy: %s", err)
 		return conn, err
 	}
-	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, connect)
 	if err != nil {
 		debugf("negotiate> Could not read token response from proxy: %s", err)
