@@ -11,6 +11,8 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
+var PacFileURL string
+
 func getProxyServer() (proxyServer string) {
 	// Check Environment
 	if proxyFromEnv, ok := os.LookupEnv("GONTLM_PROXY"); ok {
@@ -40,10 +42,11 @@ func getProxyServer() (proxyServer string) {
 			log.Warn("No PAC file detected and Proxy is not enabled in Internet Settings")
 			return
 		} else {
+			PacFileURL = pacFile
 			// Ensure we use PAC over Proxy ENV variables in ProxyPlease
 			os.Unsetenv("HTTP_PROXY")
 			os.Unsetenv("HTTPS_PROXY")
-			log.Infoln("Using Proxy Auto-Configuration (PAC) file:", pacFile)
+			log.Infoln("Using Proxy Auto-Configuration (PAC) file:", PacFileURL)
 		}
 	}
 

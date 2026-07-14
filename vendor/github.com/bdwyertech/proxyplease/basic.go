@@ -10,14 +10,8 @@ import (
 	"net/url"
 )
 
-func dialBasic(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Conn, error) {
+func dialBasic(p Proxy, addr string, conn net.Conn, br *bufio.Reader) (net.Conn, error) {
 	debugf("basic> Attempting to authenticate")
-
-	conn, err := baseDial()
-	if err != nil {
-		debugf("basic> Could not call dial context with proxy: %s", err)
-		return conn, err
-	}
 
 	u := fmt.Sprintf("%s:%s", p.Username, p.Password)
 	h := p.Headers.Clone()
@@ -29,19 +23,19 @@ func dialBasic(p Proxy, addr string, baseDial func() (net.Conn, error)) (net.Con
 		Host:   addr,
 		Header: h,
 	}
-	if err := connect.Write(conn); err != nil {
+	if err := connect.WriteProxy(conn); err != nil {
 		debugf("basic> Could not write authorization message to proxy: %s", err)
 		return conn, err
 	}
-	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, connect)
 	if err != nil {
 		debugf("basic> Could not read response from proxy: %s", err)
 		return conn, err
 	}
+	resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		// Succussfully authorized with Basic
+		// Successfully authorized with Basic
 		debugf("basic> Successfully injected Basic to connection")
 		return conn, nil
 	}
