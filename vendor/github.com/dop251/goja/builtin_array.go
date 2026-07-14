@@ -58,20 +58,6 @@ func arraySpeciesCreate(obj *Object, size int64) *Object {
 	return obj.runtime.newArrayLength(size)
 }
 
-func max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func relToIdx(rel, l int64) int64 {
 	if rel >= 0 {
 		return min(rel, l)
@@ -176,8 +162,40 @@ func (r *Runtime) arrayproto_pop(call FunctionCall) Value {
 	}
 }
 
+// pushToStringStack checks for circular references and pushes an object onto the toString stack.
+// Returns true if the object is already in the stack (circular reference detected), false otherwise.
+// If false is returned, the caller must ensure the object is popped from the stack when done.
+func (r *Runtime) pushToStringStack(o *Object) bool {
+	// Check for circular reference in the toString stack
+	for _, obj := range r.toStringStack {
+		if o == obj {
+			// Circular reference detected
+			return true
+		}
+	}
+
+	// Push this object onto the stack
+	r.toStringStack = append(r.toStringStack, o)
+	return false
+}
+
+// popFromStringStack removes an object from the toString stack.
+func (r *Runtime) popFromStringStack() {
+	// Set the last element to nil to allow GC to collect it
+	r.toStringStack[len(r.toStringStack)-1] = nil
+	r.toStringStack = r.toStringStack[:len(r.toStringStack)-1]
+}
+
 func (r *Runtime) arrayproto_join(call FunctionCall) Value {
 	o := call.This.ToObject(r)
+
+	if r.pushToStringStack(o) {
+		// Circular reference detected, return empty string to avoid infinite recursion
+		// This matches the behavior of mainstream JavaScript engines (V8, SpiderMonkey)
+		return stringEmpty
+	}
+	defer r.popFromStringStack()
+
 	l := int(toLength(o.self.getStr("length", nil)))
 	var sep String
 	if s := call.Argument(0); s != _undefined {
@@ -249,6 +267,13 @@ func (r *Runtime) writeItemLocaleString(item Value, buf *StringBuilder) {
 
 func (r *Runtime) arrayproto_toLocaleString(call FunctionCall) Value {
 	array := call.This.ToObject(r)
+
+	if r.pushToStringStack(array) {
+		// Circular reference detected, return empty string to avoid infinite recursion
+		return stringEmpty
+	}
+	defer r.popFromStringStack()
+
 	var buf StringBuilder
 	if a := r.checkStdArrayObj(array); a != nil {
 		for i, item := range a.values {
@@ -940,7 +965,7 @@ func arrayproto_reverse_generic_step(o *Object, lower, upper int64) {
 	} else if !lowerExists && upperExists {
 		o.self.setOwnIdx(lowerP, upperValue, true)
 		o.self.deleteIdx(upperP, true)
-	} else if lowerExists && !upperExists {
+	} else if lowerExists {
 		o.self.deleteIdx(lowerP, true)
 		o.self.setOwnIdx(upperP, lowerValue, true)
 	}
@@ -1237,7 +1262,7 @@ func (r *Runtime) arrayproto_with(call FunctionCall) Value {
 		actualIndex = length + relativeIndex
 	}
 	if actualIndex >= length || actualIndex < 0 {
-		panic(r.newError(r.getRangeError(), "Invalid index %s", call.Argument(0).String()))
+		panic(r.newErrorf(r.getRangeError(), "Invalid index %s", call.Argument(0).String()))
 	}
 
 	if src := r.checkStdArrayObj(o); src != nil {

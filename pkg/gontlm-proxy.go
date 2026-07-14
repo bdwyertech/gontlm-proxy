@@ -63,6 +63,16 @@ func Run() {
 		ProxyServer = getProxyServer()
 	}
 
+	// Initialize PAC parser if a PAC URL was detected and no static proxy is set
+	if PacFileURL != "" && ProxyServer == "" {
+		var pacErr error
+		pacParser, pacErr = loadPacFile(PacFileURL)
+		if pacErr != nil {
+			log.Fatalf("Failed to load PAC file %s: %v", PacFileURL, pacErr)
+		}
+		log.Infof("Loaded PAC file: %s", PacFileURL)
+	}
+
 	bind, err := url.Parse(ProxyBind)
 	if err != nil {
 		log.Fatal(err)
@@ -89,7 +99,7 @@ func Run() {
 	//
 	// LRU Cache: Memoize DialContexts for 60 minutes
 	//
-	dialerCache := ttlcache.New[string, proxyplease.DialContext](ttlcache.WithTTL[string, proxyplease.DialContext](ProxyDialerCacheTimeout))
+	dialerCache := ttlcache.New(ttlcache.WithTTL[string, proxyplease.DialContext](ProxyDialerCacheTimeout))
 	dialerCacheGroup := singleflight.Group{}
 
 	directDialer := new(net.Dialer).DialContext
@@ -243,14 +253,22 @@ func Run() {
 		return 10 * time.Second // Bluecoat-friendly default
 	}()
 
-	// HTTP
-	proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		return proxyDialer("http", addr, proxyUrl)(ctx, network, addr)
-	}
-
-	// HTTPS
-	proxy.ConnectDialWithReq = func(req *http.Request, network, addr string) (net.Conn, error) {
-		return proxyDialer("https", addr, proxyUrl)(req.Context(), network, addr)
+	if pacParser != nil {
+		// PAC mode: evaluate PAC per-request with failover
+		proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return pacDialer("http", addr, directDialer, proxyDialer)(ctx, network, addr)
+		}
+		proxy.ConnectDialWithReq = func(req *http.Request, network, addr string) (net.Conn, error) {
+			return pacDialer("https", addr, directDialer, proxyDialer)(req.Context(), network, addr)
+		}
+	} else {
+		// Static proxy mode
+		proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return proxyDialer("http", addr, proxyUrl)(ctx, network, addr)
+		}
+		proxy.ConnectDialWithReq = func(req *http.Request, network, addr string) (net.Conn, error) {
+			return proxyDialer("https", addr, proxyUrl)(req.Context(), network, addr)
+		}
 	}
 
 	//

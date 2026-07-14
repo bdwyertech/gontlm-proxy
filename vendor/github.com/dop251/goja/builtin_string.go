@@ -136,11 +136,11 @@ func (r *Runtime) string_fromcodepoint(call FunctionCall) Value {
 		var c rune
 		if numInt, ok := num.(valueInt); ok {
 			if numInt < 0 || numInt > utf8.MaxRune {
-				panic(r.newError(r.getRangeError(), "Invalid code point %d", numInt))
+				panic(r.newErrorf(r.getRangeError(), "Invalid code point %d", numInt))
 			}
 			c = rune(numInt)
 		} else {
-			panic(r.newError(r.getRangeError(), "Invalid code point %s", num))
+			panic(r.newErrorf(r.getRangeError(), "Invalid code point %s", num))
 		}
 		sb.WriteRune(c)
 	}
@@ -381,7 +381,7 @@ func (r *Runtime) stringproto_localeCompare(call FunctionCall) Value {
 func (r *Runtime) stringproto_match(call FunctionCall) Value {
 	r.checkObjectCoercible(call.This)
 	regexp := call.Argument(0)
-	if regexp != _undefined && regexp != _null {
+	if _, ok := regexp.(*Object); ok {
 		if matcher := toMethod(r.getV(regexp, SymMatch)); matcher != nil {
 			return matcher(FunctionCall{
 				This:      regexp,
@@ -412,14 +412,12 @@ func (r *Runtime) stringproto_match(call FunctionCall) Value {
 func (r *Runtime) stringproto_matchAll(call FunctionCall) Value {
 	r.checkObjectCoercible(call.This)
 	regexp := call.Argument(0)
-	if regexp != _undefined && regexp != _null {
+	if o, ok := regexp.(*Object); ok {
 		if isRegexp(regexp) {
-			if o, ok := regexp.(*Object); ok {
-				flags := nilSafe(o.self.getStr("flags", nil))
-				r.checkObjectCoercible(flags)
-				if !strings.Contains(flags.toString().String(), "g") {
-					panic(r.NewTypeError("RegExp doesn't have global flag set"))
-				}
+			flags := nilSafe(o.self.getStr("flags", nil))
+			r.checkObjectCoercible(flags)
+			if !strings.Contains(flags.toString().String(), "g") {
+				panic(r.NewTypeError("RegExp doesn't have global flag set"))
 			}
 		}
 		if matcher := toMethod(r.getV(regexp, SymMatchAll)); matcher != nil {
@@ -524,7 +522,7 @@ func (r *Runtime) _stringPad(call FunctionCall, start bool) Value {
 		return asciiString(sb.String())
 	}
 	var sb unicodeStringBuilder
-	sb.ensureStarted(toIntStrict(maxLength))
+	sb.Grow(toIntStrict(maxLength))
 	if !start {
 		sb.writeString(s)
 	}
@@ -595,7 +593,7 @@ func getReplaceValue(replaceValue Value) (str String, rcall func(FunctionCall) V
 	return
 }
 
-func stringReplace(s String, found [][]int, newstring String, rcall func(FunctionCall) Value) Value {
+func (r *Runtime) stringReplace(s String, found []regexpResult, newstring String, rcall func(FunctionCall) Value) Value {
 	if len(found) == 0 {
 		return s
 	}
@@ -608,48 +606,69 @@ func stringReplace(s String, found [][]int, newstring String, rcall func(Functio
 	lengthS := s.Length()
 	if rcall != nil {
 		for _, item := range found {
-			if item[0] != lastIndex {
-				buf.WriteSubstring(s, lastIndex, item[0])
+			if item.indexes[0] != lastIndex {
+				buf.WriteSubstring(s, lastIndex, item.indexes[0])
 			}
-			matchCount := len(item) / 2
-			argumentList := make([]Value, matchCount+2)
+			matchCount := len(item.indexes) / 2
+			argumentList := make([]Value, matchCount+2, matchCount+3)
 			for index := 0; index < matchCount; index++ {
 				offset := 2 * index
-				if item[offset] != -1 {
+				if item.indexes[offset] != -1 {
 					if u == nil {
-						argumentList[index] = a[item[offset]:item[offset+1]]
+						argumentList[index] = a[item.indexes[offset]:item.indexes[offset+1]]
 					} else {
-						argumentList[index] = u.Substring(item[offset], item[offset+1])
+						argumentList[index] = u.Substring(item.indexes[offset], item.indexes[offset+1])
 					}
 				} else {
 					argumentList[index] = _undefined
 				}
 			}
-			argumentList[matchCount] = valueInt(item[0])
+			argumentList[matchCount] = intToValue(int64(item.indexes[0]))
 			argumentList[matchCount+1] = s
+			groups := r.createRegexpGroupsObj(argumentList[:matchCount], item.groups)
+			if groups != nil {
+				argumentList = append(argumentList, groups)
+			}
 			replacement := rcall(FunctionCall{
 				This:      _undefined,
 				Arguments: argumentList,
 			}).toString()
 			buf.WriteString(replacement)
-			lastIndex = item[1]
+			lastIndex = item.indexes[1]
 		}
 	} else {
 		for _, item := range found {
-			if item[0] != lastIndex {
-				buf.WriteString(s.Substring(lastIndex, item[0]))
+			if item.indexes[0] != lastIndex {
+				buf.WriteString(s.Substring(lastIndex, item.indexes[0]))
 			}
-			matchCount := len(item) / 2
-			writeSubstitution(s, item[0], matchCount, func(idx int) String {
-				if item[idx*2] != -1 {
+			matchCount := len(item.indexes) / 2
+			var namedGroups map[unistring.String]int
+			writeSubstitution(s, item.indexes[0], matchCount, func(idx int) String {
+				if item.indexes[idx*2] != -1 {
 					if u == nil {
-						return a[item[idx*2]:item[idx*2+1]]
+						return a[item.indexes[idx*2]:item.indexes[idx*2+1]]
 					}
-					return u.Substring(item[idx*2], item[idx*2+1])
+					return u.Substring(item.indexes[idx*2], item.indexes[idx*2+1])
+				}
+				return stringEmpty
+			}, func(ref String) String {
+				if namedGroups == nil {
+					namedGroups = createRegexpGroupsMap(item)
+				}
+				if len(namedGroups) == 0 {
+					return nil
+				}
+				if idx, exists := namedGroups[ref.string()]; exists {
+					if item.indexes[idx] != -1 {
+						if u == nil {
+							return a[item.indexes[idx]:item.indexes[idx+1]]
+						}
+						return u.Substring(item.indexes[idx], item.indexes[idx+1])
+					}
 				}
 				return stringEmpty
 			}, newstring, &buf)
-			lastIndex = item[1]
+			lastIndex = item.indexes[1]
 		}
 	}
 
@@ -664,7 +683,7 @@ func (r *Runtime) stringproto_replace(call FunctionCall) Value {
 	r.checkObjectCoercible(call.This)
 	searchValue := call.Argument(0)
 	replaceValue := call.Argument(1)
-	if searchValue != _undefined && searchValue != _null {
+	if _, ok := searchValue.(*Object); ok {
 		if replacer := toMethod(r.getV(searchValue, SymReplace)); replacer != nil {
 			return replacer(FunctionCall{
 				This:      searchValue,
@@ -674,29 +693,27 @@ func (r *Runtime) stringproto_replace(call FunctionCall) Value {
 	}
 
 	s := call.This.toString()
-	var found [][]int
+	var found []regexpResult
 	searchStr := searchValue.toString()
 	pos := s.index(searchStr, 0)
 	if pos != -1 {
-		found = append(found, []int{pos, pos + searchStr.Length()})
+		found = append(found, regexpResult{indexes: []int{pos, pos + searchStr.Length()}})
 	}
 
 	str, rcall := getReplaceValue(replaceValue)
-	return stringReplace(s, found, str, rcall)
+	return r.stringReplace(s, found, str, rcall)
 }
 
 func (r *Runtime) stringproto_replaceAll(call FunctionCall) Value {
 	r.checkObjectCoercible(call.This)
 	searchValue := call.Argument(0)
 	replaceValue := call.Argument(1)
-	if searchValue != _undefined && searchValue != _null {
+	if o, ok := searchValue.(*Object); ok {
 		if isRegexp(searchValue) {
-			if o, ok := searchValue.(*Object); ok {
-				flags := nilSafe(o.self.getStr("flags", nil))
-				r.checkObjectCoercible(flags)
-				if !strings.Contains(flags.toString().String(), "g") {
-					panic(r.NewTypeError("String.prototype.replaceAll called with a non-global RegExp argument"))
-				}
+			flags := nilSafe(o.self.getStr("flags", nil))
+			r.checkObjectCoercible(flags)
+			if !strings.Contains(flags.toString().String(), "g") {
+				panic(r.NewTypeError("String.prototype.replaceAll called with a non-global RegExp argument"))
 			}
 		}
 		if replacer := toMethod(r.getV(searchValue, SymReplace)); replacer != nil {
@@ -708,25 +725,25 @@ func (r *Runtime) stringproto_replaceAll(call FunctionCall) Value {
 	}
 
 	s := call.This.toString()
-	var found [][]int
+	var found []regexpResult
 	searchStr := searchValue.toString()
 	searchLength := searchStr.Length()
 	advanceBy := toIntStrict(max(1, int64(searchLength)))
 
 	pos := s.index(searchStr, 0)
 	for pos != -1 {
-		found = append(found, []int{pos, pos + searchLength})
+		found = append(found, regexpResult{indexes: []int{pos, pos + searchLength}})
 		pos = s.index(searchStr, pos+advanceBy)
 	}
 
 	str, rcall := getReplaceValue(replaceValue)
-	return stringReplace(s, found, str, rcall)
+	return r.stringReplace(s, found, str, rcall)
 }
 
 func (r *Runtime) stringproto_search(call FunctionCall) Value {
 	r.checkObjectCoercible(call.This)
 	regexp := call.Argument(0)
-	if regexp != _undefined && regexp != _null {
+	if _, ok := regexp.(*Object); ok {
 		if searcher := toMethod(r.getV(regexp, SymSearch)); searcher != nil {
 			return searcher(FunctionCall{
 				This:      regexp,
@@ -799,7 +816,7 @@ func (r *Runtime) stringproto_split(call FunctionCall) Value {
 	r.checkObjectCoercible(call.This)
 	separatorValue := call.Argument(0)
 	limitValue := call.Argument(1)
-	if separatorValue != _undefined && separatorValue != _null {
+	if _, ok := separatorValue.(*Object); ok {
 		if splitter := toMethod(r.getV(separatorValue, SymSplit)); splitter != nil {
 			return splitter(FunctionCall{
 				This:      separatorValue,
