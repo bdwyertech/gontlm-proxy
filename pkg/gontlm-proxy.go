@@ -256,18 +256,34 @@ func Run() {
 	if pacParser != nil {
 		// PAC mode: evaluate PAC per-request with failover
 		proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return pacDialer("http", addr, directDialer, proxyDialer)(ctx, network, addr)
+			conn, err := pacDialer("http", addr, directDialer, proxyDialer)(ctx, network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return wrapTunnelConn(conn, addr), nil
 		}
 		proxy.ConnectDialWithReq = func(req *http.Request, network, addr string) (net.Conn, error) {
-			return pacDialer("https", addr, directDialer, proxyDialer)(req.Context(), network, addr)
+			conn, err := pacDialer("https", addr, directDialer, proxyDialer)(req.Context(), network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return wrapTunnelConn(conn, addr), nil
 		}
 	} else {
 		// Static proxy mode
 		proxy.Tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return proxyDialer("http", addr, proxyUrl)(ctx, network, addr)
+			conn, err := proxyDialer("http", addr, proxyUrl)(ctx, network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return wrapTunnelConn(conn, addr), nil
 		}
 		proxy.ConnectDialWithReq = func(req *http.Request, network, addr string) (net.Conn, error) {
-			return proxyDialer("https", addr, proxyUrl)(req.Context(), network, addr)
+			conn, err := proxyDialer("https", addr, proxyUrl)(req.Context(), network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return wrapTunnelConn(conn, addr), nil
 		}
 	}
 

@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -66,4 +67,20 @@ func localIPs() (ips []net.IP) {
 		}
 	}
 	return
+}
+
+// parseDurationEnv reads a duration from the named environment variable using
+// time.ParseDuration semantics. An unset/empty value returns defaultVal; an
+// unparseable value logs a warning and returns defaultVal (design §3).
+func parseDurationEnv(key string, defaultVal time.Duration) time.Duration {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return defaultVal
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		log.Warnf("Invalid duration for %s=%q, using default %v: %v", key, raw, defaultVal, err)
+		return defaultVal
+	}
+	return d
 }

@@ -28,6 +28,8 @@ By default, GoNTLM-Proxy listens locally on port 3128, however this can be set v
 | GONTLM_CA | `USERS_HOMEDIR`/.gontlm-ca.pem | The Certificate Authority which will be used for TLS communication |
 | GONTLM_PROXY_VERBOSE | false | This set the loglevel for the logging library |
 | GONTLM_PROXY_IDLE_TIMEOUT | unset | This set the [IdleTimeout](https://pkg.go.dev/net/http#Server) for the proxy. The format is documented in [ParseDuration](https://pkg.go.dev/time#ParseDuration) |
+| GONTLM_TCP_KEEPALIVE | 5s | TCP keepalive period on upstream tunnel sockets, to defeat idle-timeout drops by enterprise proxies (e.g. Bluecoat/ProxySG). Set to `0` to disable. The format is documented in [ParseDuration](https://pkg.go.dev/time#ParseDuration) |
+| GONTLM_TUNNEL_IDLE_WARN | unset (disabled) | When set to a non-zero duration, logs a warning once each time an upstream tunnel stays idle past this threshold (re-arms after activity). The format is documented in [ParseDuration](https://pkg.go.dev/time#ParseDuration) |
 
 ## Connection Pooling and Timeout Defaults
 
@@ -45,6 +47,12 @@ You can override these defaults using the following environment variables:
 
 **Why these defaults?**
 - Bluecoat/Symantec ProxySG proxies and similar enterprise proxies often close idle TCP connections after 10–15 seconds. These values are based on community experience and best practices for enterprise proxy compatibility. If your environment is less aggressive, you can increase these values for better performance.
+
+### Tunnel Keepalive and Liveness
+
+Upstream tunnel sockets (the connections gontlm-proxy opens to the upstream proxy) have TCP keepalive enabled by default with a `5s` period via `GONTLM_TCP_KEEPALIVE`. This keeps otherwise-idle tunnels alive across quiet gaps — for example, the pauses during a long-running streaming response — so aggressive enterprise proxies do not drop them mid-transfer. Set `GONTLM_TCP_KEEPALIVE=0` to disable.
+
+Optionally, set `GONTLM_TUNNEL_IDLE_WARN` (e.g. `10s`) to log a warning whenever an upstream tunnel stays idle past that threshold. The warning fires once per idle episode and re-arms after the next read or write, making it useful for diagnosing idle-timeout drops without flooding the logs. It is disabled when unset or `0`.
 
 ## Background Task
 Running this as a background task is likely preferred over running it as a service.  Unfortunately, Windows does not let you run services as users without specifying credentials unless you turn off some Security Policy and I do not recommend this.  The whole purpose of this project is to remove the need for hardcoded credentials after all.
