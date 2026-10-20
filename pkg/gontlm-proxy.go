@@ -189,9 +189,11 @@ func Run() {
 							}
 
 							resp, err := http.ReadResponse(br, req)
-							resp.Body.Close()
 							if err != nil {
 								return conn, err
+							}
+							if resp != nil && resp.Body != nil {
+								resp.Body.Close()
 							}
 
 							if resp.StatusCode == http.StatusOK {
