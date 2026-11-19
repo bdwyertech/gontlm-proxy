@@ -2,8 +2,7 @@ module github.com/bdwyertech/gontlm-proxy
 
 go 1.26.0
 
-// goproxy has improved
-// replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20230608195657-05e9c5da7707
+replace github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20261119205855-bc7468447e3f
 
 replace github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20261119173313-9230e40288bb
 

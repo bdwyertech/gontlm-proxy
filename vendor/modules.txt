@@ -32,7 +32,7 @@ github.com/dop251/goja/ftoa/internal/fast
 github.com/dop251/goja/parser
 github.com/dop251/goja/token
 github.com/dop251/goja/unistring
-# github.com/elazarl/goproxy v1.9.4
+# github.com/elazarl/goproxy v1.9.4 => github.com/bdwyertech/goproxy v0.0.0-20261119205855-bc7468447e3f
 ## explicit; go 1.24.0
 github.com/elazarl/goproxy
 github.com/elazarl/goproxy/internal/http1parser
@@ -102,4 +102,5 @@ golang.org/x/text/unicode/rangetable
 # h12.io/socks v1.0.3
 ## explicit; go 1.9
 h12.io/socks
+# github.com/elazarl/goproxy => github.com/bdwyertech/goproxy v0.0.0-20261119205855-bc7468447e3f
 # github.com/darren/gpac => github.com/bdwyertech/gpac v0.0.0-20261119173313-9230e40288bb

@@ -267,6 +267,7 @@ func shouldFlushStreaming(resp *http.Response) bool {
 // illegal in HTTP/2 (RFC 9113 §8.2.2).
 func removeH2HopByHopHeaders(r *http.Request) {
 	r.Header.Del("Connection")
+	r.Close = false
 	r.Header.Del("Keep-Alive")
 	r.Header.Del("Proxy-Connection")
 	r.Header.Del("Transfer-Encoding")

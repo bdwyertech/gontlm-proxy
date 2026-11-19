@@ -599,6 +599,11 @@ func (proxy *ProxyHttpServer) handleHttps(w http.ResponseWriter, r *http.Request
 					// information URL in the context when does HTTPS MITM
 					ctx.Req = req
 
+					// Capture the client's close intent before RemoveProxyHeaders
+					// resets r.Close to false. Used below to honor RFC 9112 §9.6
+					// client close semantics on the MITM response path.
+					clientClose := req.Close
+
 					req, resp := proxy.filterRequest(req, ctx)
 					if resp == nil {
 						if err != nil {
@@ -687,7 +692,7 @@ func (proxy *ProxyHttpServer) handleHttps(w http.ResponseWriter, r *http.Request
 					// when a final response is sent before the client was told to
 					// send the request body: the body is unread, so the connection
 					// cannot be reused (RFC 9110 §10.1.1).
-					if ctx.Req.Close || headerContains(resp.Header, "Connection", "close") ||
+					if clientClose || headerContains(resp.Header, "Connection", "close") ||
 						(continueBody != nil && !continueBody.sentContinue()) {
 						resp.Close = true
 					}

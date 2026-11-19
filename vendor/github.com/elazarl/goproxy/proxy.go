@@ -134,12 +134,13 @@ func RemoveProxyHeaders(ctx *ProxyCtx, r *http.Request) {
 	//   options that are desired for that particular connection and MUST NOT
 	//   be communicated by proxies over further connections.
 
-	// We need to keep "Connection: upgrade" header, since it's part of
-	// the WebSocket handshake, and it won't work without it.
-	// For all the other cases (close, keep-alive), we already handle them, by
-	// setting the r.Close variable in the previous lines.
+	// We keep "Connection: Upgrade" for WebSocket handshakes (RFC 6455 §4.1).
+	// For all other cases the header is a hop-by-hop field (RFC 9110 §7.6.1)
+	// and must not be forwarded. r.Close is reset so that Request.write does
+	// not re-inject "Connection: close" on the upstream wire.
 	if !isWebSocketHandshake(r.Header) {
 		r.Header.Del("Connection")
+		r.Close = false
 	}
 }
 
