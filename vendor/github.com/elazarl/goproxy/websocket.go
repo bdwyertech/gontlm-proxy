@@ -2,134 +2,100 @@ package goproxy
 
 import (
 	"bufio"
-	"crypto/tls"
+	"bytes"
 	"io"
+	"net"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
 func headerContains(header http.Header, name string, value string) bool {
-	for _, v := range header[name] {
-		for _, s := range strings.Split(v, ",") {
-			if strings.EqualFold(value, strings.TrimSpace(s)) {
-				return true
+	for key, values := range header {
+		if !strings.EqualFold(key, name) {
+			continue
+		}
+		for _, v := range values {
+			for _, s := range strings.Split(v, ",") {
+				if strings.EqualFold(value, strings.TrimSpace(s)) {
+					return true
+				}
 			}
 		}
 	}
 	return false
 }
 
-func isWebSocketRequest(r *http.Request) bool {
-	return headerContains(r.Header, "Connection", "upgrade") &&
-		headerContains(r.Header, "Upgrade", "websocket")
+func isWebSocketHandshake(header http.Header) bool {
+	return headerContains(header, "Connection", "Upgrade") &&
+		headerContains(header, "Upgrade", "websocket")
 }
 
-func (proxy *ProxyHttpServer) serveWebsocketTLS(ctx *ProxyCtx, w http.ResponseWriter, req *http.Request, tlsConfig *tls.Config, clientConn *tls.Conn) {
-	targetURL := url.URL{Scheme: "wss", Host: req.URL.Host, Path: req.URL.Path}
-
-	// Connect to upstream
-	conn, err := proxy.connectDial(ctx, "tcp", targetURL.Host)
-	if err != nil {
-		ctx.Warnf("Error dialing target site: %v", err)
-		return
-	}
-	defer conn.Close()
-	// Upgrade Connection to TLS
-	targetConn := tls.Client(conn, tlsConfig)
-	if err := targetConn.Handshake(); err != nil {
-		ctx.Warnf("Websocket TLS Handshake error: %v", err)
-		return
-	}
-	// TLS Certificate Validation
-	if !tlsConfig.InsecureSkipVerify {
-		desired := targetURL.Hostname()
-		if err := targetConn.VerifyHostname(desired); err != nil {
-			ctx.Warnf("Websocket TLS VerifyHostname error: %v, %v", desired, err)
-			return
-		}
-	}
-
-	// Perform handshake
-	if err := proxy.websocketHandshake(ctx, req, targetConn, clientConn); err != nil {
-		ctx.Warnf("Websocket handshake error: %v", err)
-		return
-	}
-
-	// Proxy wss connection
-	proxy.proxyWebsocket(ctx, targetConn, clientConn)
-}
-
-func (proxy *ProxyHttpServer) serveWebsocket(ctx *ProxyCtx, w http.ResponseWriter, req *http.Request) {
-	targetURL := url.URL{Scheme: "ws", Host: req.URL.Host, Path: req.URL.Path}
-
-	targetConn, err := proxy.connectDial(ctx, "tcp", targetURL.Host)
-	if err != nil {
-		ctx.Warnf("Error dialing target site: %v", err)
-		return
-	}
-	defer targetConn.Close()
-
+func (proxy *ProxyHttpServer) hijackConnection(ctx *ProxyCtx, w http.ResponseWriter) (net.Conn, *bufio.Reader, error) {
 	// Connect to Client
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		panic("httpserver does not support hijacking")
 	}
-	clientConn, _, err := hj.Hijack()
+	clientConn, rw, err := hj.Hijack()
 	if err != nil {
 		ctx.Warnf("Hijack error: %v", err)
-		return
+		return nil, nil, err
 	}
-
-	// Perform handshake
-	if err := proxy.websocketHandshake(ctx, req, targetConn, clientConn); err != nil {
-		ctx.Warnf("Websocket handshake error: %v", err)
-		return
-	}
-
-	// Proxy ws connection
-	proxy.proxyWebsocket(ctx, targetConn, clientConn)
+	// rw.Reader still holds any bytes the HTTP server buffered while parsing the
+	// request (e.g. the first WebSocket frame sent in the same write as the
+	// upgrade). The caller must relay them via bufferedClientReader.
+	return clientConn, rw.Reader, nil
 }
 
-func (proxy *ProxyHttpServer) websocketHandshake(ctx *ProxyCtx, req *http.Request, targetSiteConn io.ReadWriter, clientConn io.ReadWriter) error {
-	// write handshake request to target
-	err := req.Write(targetSiteConn)
-	if err != nil {
-		ctx.Warnf("Error writing upgrade request: %v", err)
-		return err
+// bufferedClientReader returns a reader that first replays the bytes already
+// buffered in br by the HTTP request parser, then continues from conn.
+//
+// A client may send its first tunnel or upgrade bytes (a TLS ClientHello, an
+// HTTP/2 preface, or a WebSocket frame) in the same write as the CONNECT or
+// upgrade request. Those bytes are read off the socket into the parser's
+// buffer, so a relay that reads only from conn would strand them. Both the
+// CONNECT tunnel path and the MITM path use this helper.
+//
+// We deliberately replay a copy of the buffered bytes instead of reading through
+// br itself: with PreventCanonicalization enabled, br wraps an io.TeeReader that
+// retains every byte read from it, so relaying the whole session through br
+// would grow that buffer unbounded for the connection's lifetime.
+func bufferedClientReader(br *bufio.Reader, conn io.Reader) io.Reader {
+	if br == nil {
+		return conn
 	}
-
-	targetTLSReader := bufio.NewReader(targetSiteConn)
-
-	// Read handshake response from target
-	resp, err := http.ReadResponse(targetTLSReader, req)
-	if err != nil {
-		ctx.Warnf("Error reading handhsake response  %v", err)
-		return err
+	// Peek never advances the reader, and requesting Buffered() bytes always
+	// succeeds, so this is a snapshot of the currently buffered bytes.
+	buffered, _ := br.Peek(br.Buffered())
+	if len(buffered) == 0 {
+		return conn
 	}
-
-	// Run response through handlers
-	resp = proxy.filterResponse(resp, ctx)
-
-	// Proxy handshake back to client
-	err = resp.Write(clientConn)
-	if err != nil {
-		ctx.Warnf("Error writing handshake response: %v", err)
-		return err
-	}
-	return nil
+	return io.MultiReader(bytes.NewReader(buffered), conn)
 }
 
-func (proxy *ProxyHttpServer) proxyWebsocket(ctx *ProxyCtx, dest io.ReadWriter, source io.ReadWriter) {
-	errChan := make(chan error, 2)
-	cp := func(dst io.Writer, src io.Reader) {
-		_, err := io.Copy(dst, src)
-		ctx.Warnf("Websocket error: %v", err)
-		errChan <- err
-	}
+// proxyWebsocket relays frames between the client and the upstream server until
+// one side closes. The client read and write sides are passed separately so the
+// caller can hand over a reader that still holds bytes buffered while parsing
+// the upgrade request (e.g. a client frame that arrived in the same write).
+func (proxy *ProxyHttpServer) proxyWebsocket(
+	ctx *ProxyCtx,
+	remoteConn io.ReadWriter,
+	clientReader io.Reader,
+	clientWriter io.Writer,
+) {
+	// 2 is the number of goroutines, this code is implemented according to
+	// https://stackoverflow.com/questions/52031332/wait-for-one-goroutine-to-finish
+	waitChan := make(chan struct{}, 2)
+	go func() {
+		_ = copyOrWarn(ctx, remoteConn, clientReader)
+		waitChan <- struct{}{}
+	}()
 
-	// Start proxying websocket data
-	go cp(dest, source)
-	go cp(source, dest)
-	<-errChan
+	go func() {
+		_ = copyOrWarn(ctx, clientWriter, remoteConn)
+		waitChan <- struct{}{}
+	}()
+
+	// Wait until one end closes the connection
+	<-waitChan
 }

@@ -84,13 +84,16 @@ func ftoa(d float64, mode int, biasUp bool, ndigits int, buf []byte) ([]byte, in
 	} else {
 		/* d is denormalized */
 		i = bbits + be + (bias + (p - 1) - 1)
-		var x uint64
+		/* x holds the top 32 bits of the significand; like dtoa.c it must be
+		   a 32-bit value, so the shift drops the higher bits. */
+		var x uint32
 		if i > 32 {
-			x = uint64(word0)<<(64-i) | uint64(word1)>>(i-32)
+			x = word0<<(64-i) | word1>>(i-32)
 		} else {
-			x = uint64(word1) << (32 - i)
+			x = word1 << (32 - i)
 		}
-		d2 = setWord0(float64(x), uint32((x>>32)-31*exp_mask))
+		d2 = float64(x)
+		d2 = setWord0(d2, _word0(d2)-31*exp_msk1) /* adjust exponent */
 		i -= (bias + (p - 1) - 1) + 1
 		denorm = true
 	}
@@ -536,7 +539,6 @@ func ftoa(d float64, mode int, biasUp bool, ndigits int, buf []byte) ([]byte, in
 					b.Lsh(b, 1)
 					j1 = b.Cmp(S)
 					if (j1 > 0) || (j1 == 0 && (((dig & 1) == 1) || biasUp)) {
-						dig++
 						if dig == '9' {
 							buf = append(buf, '9')
 							buf, flag := roundOff(buf, startPos)
@@ -546,6 +548,7 @@ func ftoa(d float64, mode int, biasUp bool, ndigits int, buf []byte) ([]byte, in
 							}
 							return buf, k + 1
 						}
+						dig++
 					}
 				}
 				buf = append(buf, dig)

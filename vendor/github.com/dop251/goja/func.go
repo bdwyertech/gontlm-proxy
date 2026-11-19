@@ -126,6 +126,13 @@ type nativeFuncObject struct {
 	construct func(args []Value, newTarget *Object) *Object
 }
 
+// iteratorNextFunction contains a special shortcut which can be used to get the next iterator result without
+// creating an IteratorResult object. This saves memory for for-of loops.
+type iteratorNextFunction struct {
+	nativeFuncObject
+	getNextResult func(this *Object) func(Value) (Value, bool)
+}
+
 type wrappedFuncObject struct {
 	nativeFuncObject
 	wrapped reflect.Value
@@ -177,6 +184,10 @@ func (f *funcObject) _addProto(n unistring.String) Value {
 		}
 	}
 	return nil
+}
+
+func (f *funcObject) hasAndGetStr(name unistring.String, receiver Value) (Value, bool) {
+	return f.hasAndGetOwnStr(name, f.getOwnPropStr(name), receiver)
 }
 
 func (f *funcObject) getStr(p unistring.String, receiver Value) Value {
@@ -261,15 +272,10 @@ func (f *baseJsFuncObject) construct(args []Value, newTarget *Object) *Object {
 	if newTarget == nil {
 		newTarget = f.val
 	}
-	proto := newTarget.self.getStr("prototype", nil)
-	var protoObj *Object
-	if p, ok := proto.(*Object); ok {
-		protoObj = p
-	} else {
-		protoObj = f.val.runtime.global.ObjectPrototype
-	}
+	r := f.val.runtime
+	proto := r.getPrototypeFromCtor(newTarget, nil, r.global.ObjectPrototype)
 
-	obj := f.val.runtime.newBaseObject(protoObj, classObject).val
+	obj := r.newBaseObject(proto, classObject).val
 	ret := f.call(FunctionCall{
 		This:      obj,
 		Arguments: args,
@@ -290,7 +296,7 @@ func (f *classFuncObject) assertCallable() (func(FunctionCall) Value, bool) {
 }
 
 func (f *classFuncObject) vmCall(vm *vm, n int) {
-	f.Call(FunctionCall{})
+	f.Call(FunctionCall{This: _undefined})
 }
 
 func (f *classFuncObject) exportType() reflect.Type {
@@ -320,6 +326,9 @@ func (f *classFuncObject) createInstance(args []Value, newTarget *Object) (insta
 
 func (f *classFuncObject) _initFields(instance *Object) {
 	if f.privateEnvType != nil {
+		if len(f.privateMethods) > 0 && !instance.self.isExtensible() {
+			panic(f.val.runtime.NewTypeError("Cannot add private methods to non-extensible object"))
+		}
 		penv := instance.self.getPrivateEnv(f.privateEnvType, true)
 		penv.methods = f.privateMethods
 	}
@@ -330,6 +339,9 @@ func (f *classFuncObject) _initFields(instance *Object) {
 		vm.stash = f.stash
 		vm.privEnv = f.privEnv
 		vm.newTarget = nil
+		// enterFunc derives the stack base from vm.args, which otherwise still
+		// holds the argument count of whichever function is executing 'new'.
+		vm.args = 0
 
 		// so that 'super' base could be correctly resolved (including from direct eval())
 		vm.push(f.val)
@@ -692,7 +704,7 @@ func (ar *asyncRunner) onFulfilled(call FunctionCall) Value {
 	}()
 	arg := call.Argument(0)
 	res, resType, ex := ar.gen.next(arg)
-	ar.step(res, resType == resultNormal, ex)
+	_ = ar.step(res, resType == resultNormal, ex)
 	return _undefined
 }
 
@@ -703,32 +715,47 @@ func (ar *asyncRunner) onRejected(call FunctionCall) Value {
 	}()
 	reason := call.Argument(0)
 	res, resType, ex := ar.gen.nextThrow(reason)
-	ar.step(res, resType == resultNormal, ex)
+	_ = ar.step(res, resType == resultNormal, ex)
 	return _undefined
 }
 
-func (ar *asyncRunner) step(res Value, done bool, ex *Exception) {
+func (ar *asyncRunner) step(res Value, done bool, ex *Exception) *Exception {
 	r := ar.f.runtime
-	if done || ex != nil {
-		if ex == nil {
-			ar.promiseCap.resolve(res)
-		} else {
-			ar.promiseCap.reject(ex.val)
+	for {
+		if done || ex != nil {
+			if ex == nil {
+				ar.promiseCap.resolve(res)
+			} else {
+				ar.promiseCap.reject(ex.val)
+			}
+			return ex
 		}
-		return
-	}
 
-	// await
-	promise := r.promiseResolve(r.getPromise(), res)
-	promise.self.(*Promise).addReactions(&promiseReaction{
-		typ:         promiseReactionFulfill,
-		handler:     &jobCallback{callback: ar.onFulfilled},
-		asyncRunner: ar,
-	}, &promiseReaction{
-		typ:         promiseReactionReject,
-		handler:     &jobCallback{callback: ar.onRejected},
-		asyncRunner: ar,
-	})
+		// await
+		var promise *Object
+		ex = r.vm.try(func() {
+			promise = r.promiseResolve(r.getPromise(), res)
+		})
+		if ex != nil {
+			// Await() propagates an abrupt completion from PromiseResolve() as a throw at the
+			// await expression, so resume the generator with the exception. It may be caught
+			// (or run finally blocks) inside the async function.
+			var resType resultType
+			res, resType, ex = ar.gen.nextThrow(ex.val)
+			done = resType == resultNormal
+			continue
+		}
+		promise.self.(*Promise).addReactions(&promiseReaction{
+			typ:         promiseReactionFulfill,
+			handler:     &jobCallback{callback: ar.onFulfilled},
+			asyncRunner: ar,
+		}, &promiseReaction{
+			typ:         promiseReactionReject,
+			handler:     &jobCallback{callback: ar.onRejected},
+			asyncRunner: ar,
+		})
+		return nil
+	}
 }
 
 func (ar *asyncRunner) start(nArgs int) {
@@ -736,15 +763,16 @@ func (ar *asyncRunner) start(nArgs int) {
 	ar.gen.vm = r.vm
 	ar.promiseCap = r.newPromiseCapability(r.getPromise())
 	sp := r.vm.sp
-	ar.gen.enter()
+	ctx := ar.gen.enter()
+	// Deferred so that the frames are also popped if step() is aborted by an uncatchable panic (e.g. an
+	// Interrupt). Otherwise the call stack never becomes empty again and the job queue is never drained.
+	defer ar.gen.leaveNext(ctx)
 	ar.vmCall(r.vm, nArgs)
 	res, resType, ex := ar.gen.step()
-	ar.step(res, resType == resultNormal, ex)
+	ex = ar.step(res, resType == resultNormal, ex)
 	if ex != nil {
 		r.vm.sp = sp - nArgs - 2
 	}
-	r.vm.popTryFrame()
-	r.vm.popCtx()
 }
 
 type generator struct {
@@ -759,11 +787,13 @@ func (g *generator) storeLengths() {
 	g.tryStackLen, g.iterStackLen, g.refStackLen = uint32(len(g.vm.tryStack)), uint32(len(g.vm.iterStack)), uint32(len(g.vm.refStack))
 }
 
-func (g *generator) enter() {
+func (g *generator) enter() (ctx genEnterNextCtx) {
 	g.vm.pushCtx()
+	ctx.callStackLen, ctx.tryStackLen = len(g.vm.callStack), len(g.vm.tryStack)
 	g.vm.pushTryFrame(tryPanicMarker, -1)
 	g.vm.prg, g.vm.sb, g.vm.pc = nil, -1, -2 // so that vm.run() halts after ret
 	g.storeLengths()
+	return
 }
 
 func (g *generator) enterNextFinallyFrame() (canContinue bool) {
@@ -785,7 +815,11 @@ func (g *generator) enterNextFinallyFrame() (canContinue bool) {
 			vm.stash = tf.stash
 			vm.privEnv = tf.privEnv
 			vm.pc = int(tf.finallyPos)
-			tf.catchPos = tryPanicMarker
+			// Use -1 rather than tryPanicMarker so that handleThrow() treats this as a regular
+			// frame with no handler: it will pop the frame and continue unwinding through any
+			// enclosing finally blocks. If this state ever needs to be distinguished from an
+			// ordinary no-handler frame, this should become a dedicated marker instead.
+			tf.catchPos = -1
 			tf.finallyPos = -1
 			tf.finallyRet = -2 // -1 would cause it to continue after leaveFinally
 			return true
@@ -818,6 +852,13 @@ func (g *generator) step() (res Value, resultType resultType, ex *Exception) {
 					vm.popTryFrame()
 				}
 				return
+			}
+
+			if !vm.halted() {
+				// An exception thrown by a nested call (e.g. a constructor) was caught by
+				// handleThrow(), which set pc to a catch/finally handler. runTryInner() returned
+				// without executing it, so continue running.
+				continue
 			}
 
 			if vm.prg != nil && vm.pc == -2 { // normal exit from finally
@@ -860,37 +901,47 @@ func (g *generator) step() (res Value, resultType resultType, ex *Exception) {
 	return
 }
 
-func (g *generator) enterNext() {
+type genEnterNextCtx struct {
+	callStackLen, tryStackLen int
+}
+
+func (g *generator) enterNext() (ctx genEnterNextCtx) {
 	g.vm.pushCtx()
+	ctx.callStackLen, ctx.tryStackLen = len(g.vm.callStack), len(g.vm.tryStack)
 	g.vm.pushTryFrame(tryPanicMarker, -1)
 	g.vm.callStack = append(g.vm.callStack, context{pc: -2}) // extra frame so that vm.run() halts after ret
 	g.storeLengths()
 	g.vm.resume(&g.ctx)
+	return
+}
+
+func (g *generator) leaveNext(ctx genEnterNextCtx) {
+	g.vm.callStack = g.vm.callStack[:ctx.callStackLen]
+	g.vm.tryStack = g.vm.tryStack[:ctx.tryStackLen]
+	g.vm.popCtx()
 }
 
 func (g *generator) next(v Value) (Value, resultType, *Exception) {
-	g.enterNext()
+	ctx := g.enterNext()
+	defer g.leaveNext(ctx)
+
 	if v != nil {
 		g.vm.push(v)
 	}
 	res, done, ex := g.step()
-	g.vm.popTryFrame()
-	g.vm.popCtx()
 	return res, done, ex
 }
 
 func (g *generator) nextThrow(v interface{}) (Value, resultType, *Exception) {
-	g.enterNext()
+	ctx := g.enterNext()
+	defer g.leaveNext(ctx)
+
 	ex := g.vm.handleThrow(v)
 	if ex != nil {
-		g.vm.popTryFrame()
-		g.vm.popCtx()
 		return nil, resultNormal, ex
 	}
 
 	res, resType, ex := g.step()
-	g.vm.popTryFrame()
-	g.vm.popCtx()
 	return res, resType, ex
 }
 
@@ -899,18 +950,17 @@ func (g *generatorObject) init(vmCall func(*vm, int), nArgs int) {
 	vm := g.val.runtime.vm
 	g.gen.vm = vm
 
-	g.gen.enter()
+	ctx := g.gen.enter()
+	defer g.gen.leaveNext(ctx) // see asyncRunner.start()
 	vmCall(vm, nArgs)
 
 	_, _, ex := g.gen.step()
 
-	vm.popTryFrame()
 	if ex != nil {
 		panic(ex)
 	}
 
 	g.state = genStateSuspendedStart
-	vm.popCtx()
 }
 
 func (g *generatorObject) validate() {
@@ -946,6 +996,33 @@ func (g *generatorObject) step(res Value, resType resultType, ex *Exception) Val
 	}
 }
 
+func (g *generatorObject) stepResult(res Value, resType resultType, ex *Exception) (Value, bool) {
+	if ex != nil {
+		g.delegated = nil
+		g.state = genStateCompleted
+		panic(ex)
+	}
+	switch resType {
+	case resultYield:
+		g.state = genStateSuspendedYield
+		return res, true
+	case resultYieldDelegate:
+		g.state = genStateSuspendedYield
+		return g.delegateResult(res)
+	case resultYieldRes:
+		g.state = genStateSuspendedYieldRes
+		return res, true
+	case resultYieldDelegateRes:
+		g.state = genStateSuspendedYieldRes
+		return g.delegateResult(res)
+	case resultNormal:
+		g.state = genStateCompleted
+		return res, false
+	default:
+		panic(g.val.runtime.NewTypeError("Runtime bug: unexpected result type: %v", resType))
+	}
+}
+
 func (g *generatorObject) delegate(v Value) Value {
 	ex := g.val.runtime.try(func() {
 		g.delegated = g.val.runtime.getIterator(v, nil)
@@ -956,6 +1033,18 @@ func (g *generatorObject) delegate(v Value) Value {
 		return g.step(g.gen.nextThrow(ex))
 	}
 	return g.next(_undefined)
+}
+
+func (g *generatorObject) delegateResult(v Value) (Value, bool) {
+	ex := g.val.runtime.try(func() {
+		g.delegated = g.val.runtime.getIterator(v, nil)
+	})
+	if ex != nil {
+		g.delegated = nil
+		g.state = genStateCompleted
+		return g.stepResult(g.gen.nextThrow(ex))
+	}
+	return g.nextResult(_undefined)
 }
 
 func (g *generatorObject) tryCallDelegated(fn func() (Value, bool)) (ret Value, done bool) {
@@ -977,6 +1066,43 @@ func (g *generatorObject) callDelegated(method func(FunctionCall) Value, v Value
 		return iteratorValue(res), true
 	}
 	return res, false
+}
+
+func (g *generatorObject) nextResult(v Value) (Value, bool) {
+	g.validate()
+	if g.state == genStateCompleted {
+		return _undefined, false
+	}
+	if g.delegated != nil {
+		var value Value
+		var valid bool
+		ex := g.val.runtime.try(func() {
+			if g.delegated.nextRes != nil {
+				value, valid = g.delegated.nextRes(v)
+			} else {
+				res := g.val.runtime.toObject(g.delegated.next(FunctionCall{This: g.delegated.iterator, Arguments: []Value{v}}))
+				value = iteratorValue(res)
+				valid = !iteratorComplete(res)
+			}
+		})
+		if ex != nil {
+			g.delegated = nil
+			g.state = genStateExecuting
+			return g.stepResult(g.gen.nextThrow(ex))
+		}
+
+		if valid {
+			return value, true
+		} else {
+			g.delegated = nil
+			v = value
+		}
+	}
+	if g.state != genStateSuspendedYieldRes {
+		v = nil
+	}
+	g.state = genStateExecuting
+	return g.stepResult(g.gen.next(v))
 }
 
 func (g *generatorObject) next(v Value) Value {
@@ -1060,13 +1186,14 @@ func (g *generatorObject) _return(v Value) Value {
 
 	g.gen.returning = v
 	g.state = genStateExecuting
-	g.gen.enterNext()
+	ctx := g.gen.enterNext()
+	// Deferred before enterNextFinallyFrame() and restoreStacks(): both may close iterators, i.e. run JS that can
+	// be interrupted.
+	defer g.gen.leaveNext(ctx)
 	canContinue := g.gen.enterNextFinallyFrame()
 	if !canContinue {
 		vm := g.gen.vm
 		g.state = genStateCompleted
-
-		vm.popTryFrame()
 
 		ex := vm.restoreStacks(g.gen.iterStackLen, g.gen.refStackLen)
 
@@ -1074,16 +1201,11 @@ func (g *generatorObject) _return(v Value) Value {
 			panic(ex)
 		}
 
-		vm.callStack = vm.callStack[:len(vm.callStack)-1]
 		vm.sp = vm.sb - 1
-		vm.popCtx()
 
 		return g.val.runtime.createIterResultObject(v, true)
 	}
 	res, done, ex := g.gen.step()
-	vm := g.gen.vm
-	vm.popTryFrame()
-	vm.popCtx()
 
 	return g.step(res, done, ex)
 }

@@ -344,9 +344,9 @@ func (e *compiledIdentifierExpr) emitGetter(putOnStack bool) {
 		}
 	} else {
 		if b != nil {
-			b.emitGetVar(false)
+			b.emitGetVar(false, e.c.scope.strict)
 		} else {
-			e.c.emit(loadDynamic(e.name))
+			e.c.emit(loadDynamic{name: e.name, strict: e.c.scope.strict})
 		}
 		if !putOnStack {
 			e.c.emit(pop)
@@ -361,9 +361,9 @@ func (e *compiledIdentifierExpr) emitGetterOrRef() {
 		b.emitGet()
 	} else {
 		if b != nil {
-			b.emitGetVar(false)
+			b.emitGetVar(false, e.c.scope.strict)
 		} else {
-			e.c.emit(loadDynamicRef(e.name))
+			e.c.emit(loadDynamicRef{name: e.name, strict: e.c.scope.strict})
 		}
 	}
 }
@@ -376,9 +376,9 @@ func (e *compiledIdentifierExpr) emitGetterAndCallee() {
 		b.emitGet()
 	} else {
 		if b != nil {
-			b.emitGetVar(true)
+			b.emitGetVar(true, e.c.scope.strict)
 		} else {
-			e.c.emit(loadDynamicCallee(e.name))
+			e.c.emit(loadDynamicCallee{name: e.name, strict: e.c.scope.strict})
 		}
 	}
 }
@@ -488,25 +488,21 @@ func (e *compiledIdentifierExpr) emitDelete(putOnStack bool) {
 		e.c.throwSyntaxError(e.offset, "Delete of an unqualified identifier in strict mode")
 		panic("Unreachable")
 	}
-	if b, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
-		if b == nil {
-			e.addSrcMap()
-			e.c.emit(deleteGlobal(e.name))
-			if !putOnStack {
-				e.c.emit(pop)
-			}
-			return
+	b, noDynamics := e.c.scope.lookupName(e.name)
+	if !noDynamics {
+		e.addSrcMap()
+		if b != nil {
+			// If a static binding is found but dynamic scopes exist in between, mark the access point so that
+			// finaliseVarAlloc() updates deleteVar.level and deleteVar.exec stops scanning after that number of levels.
+			b.markAccessPoint()
 		}
-	} else {
-		if b == nil {
-			e.addSrcMap()
-			e.c.emit(deleteVar(e.name))
-			if !putOnStack {
-				e.c.emit(pop)
-			}
-			return
+		e.c.emit(&deleteVar{name: e.name})
+		if !putOnStack {
+			e.c.emit(pop)
 		}
+		return
 	}
+	// A statically bound name with no dynamic scopes in between is not deletable.
 	if putOnStack {
 		e.addSrcMap()
 		e.c.emitLiteralValue(valueFalse)
@@ -1504,6 +1500,14 @@ func (e *compiledFunctionLiteral) compile() (prg *Program, name unistring.String
 		e.c.compileDeclList(e.declarationList, false)
 		e.c.createFunctionBindings(funcs)
 		e.c.compileLexicalDeclarationsFuncBody(body, calleeBinding)
+		if e.typ != funcArrow {
+			// A var named 'arguments' in the body starts with the arguments object, unless
+			// a parameter has that name (FunctionDeclarationInstantiation, steps 22 and 28).
+			if b := varScope.boundNames["arguments"]; b != nil && b.isVar && s.boundNames["arguments"] == nil {
+				s.argsNeeded = true
+				s.bindName("arguments")
+			}
+		}
 		for _, b := range varScope.bindings {
 			if b.isVar {
 				if parentBinding := s.boundNames[b.name]; parentBinding != nil && parentBinding != calleeBinding {
@@ -1565,7 +1569,7 @@ func (e *compiledFunctionLiteral) compile() (prg *Program, name unistring.String
 			e.c.throwSyntaxError(e.offset, "'arguments' is not allowed in class field initializer or static initialization block")
 		}
 		b, created := s.bindNameLexical("arguments", false, 0)
-		if created || b.isVar {
+		if !b.isArg && (created || b.isVar) {
 			if !s.argsInStash {
 				s.moveArgsToStash()
 			}
@@ -2400,10 +2404,10 @@ func (c *compiler) compileSequenceExpression(v *ast.SequenceExpression) compiled
 
 func (c *compiler) emitThrow(v Value) {
 	if o, ok := v.(*Object); ok {
-		t := nilSafe(o.self.getStr("name", nil)).toString().String()
+		t := unistring.String(nilSafe(o.self.getStr("name", nil)).toString().String())
 		switch t {
 		case "TypeError", "RangeError":
-			c.emit(loadDynamic(t))
+			c.emit(loadDynamic{name: t})
 			msg := o.self.getStr("message", nil)
 			if msg != nil {
 				c.emitLiteralValue(msg)
@@ -2670,7 +2674,9 @@ func (e *compiledLogicalAnd) emitGetter(putOnStack bool) {
 	if e.left.constant() {
 		if v, ex := e.c.evalConst(e.left); ex == nil {
 			if !v.ToBoolean() {
-				e.c.emitLiteralValue(v)
+				if putOnStack {
+					e.c.emitLiteralValue(v)
+				}
 			} else {
 				e.c.emitExpr(e.right, putOnStack)
 			}
@@ -2865,9 +2871,9 @@ func (e *compiledObjectLiteral) emitGetter(putOnStack bool) {
 				switch prop.Kind {
 				case ast.PropertyKindValue:
 					if ne != nil {
-						e.c.emit(setElem1Named)
+						e.c.emit(definePropNamed)
 					} else {
-						e.c.emit(setElem1)
+						e.c.emit(defineProp{})
 					}
 				case ast.PropertyKindMethod:
 					e.c.emit(&defineMethod{enumerable: true})
@@ -3174,9 +3180,13 @@ func (c *compiler) compileIdentifierExpression(v *ast.Identifier) compiledExpr {
 }
 
 func (c *compiler) compileNumberLiteral(v *ast.NumberLiteral) compiledExpr {
-	if c.scope.strict && len(v.Literal) > 1 && v.Literal[0] == '0' && v.Literal[1] <= '7' && v.Literal[1] >= '0' {
-		c.throwSyntaxError(int(v.Idx)-1, "Octal literals are not allowed in strict mode")
-		panic("Unreachable")
+	if c.scope.strict {
+		switch v.Kind {
+		case ast.NumberLiteralLegacyOctal:
+			c.throwSyntaxError(int(v.Idx)-1, "Octal literals are not allowed in strict mode")
+		case ast.NumberLiteralNonOctalDecimal:
+			c.throwSyntaxError(int(v.Idx)-1, "Decimals with leading zeros are not allowed in strict mode")
+		}
 	}
 	var val Value
 	switch num := v.Value.(type) {
@@ -3198,6 +3208,9 @@ func (c *compiler) compileNumberLiteral(v *ast.NumberLiteral) compiledExpr {
 }
 
 func (c *compiler) compileStringLiteral(v *ast.StringLiteral) compiledExpr {
+	if v.Sloppy && c.scope.strict {
+		c.throwSyntaxError(int(v.Idx)-1, "Octal escape sequences are not allowed in strict mode")
+	}
 	r := &compiledLiteral{
 		val: stringValueFromRaw(v.Value),
 	}
@@ -3242,6 +3255,9 @@ func (c *compiler) compileAssignExpression(v *ast.AssignExpression) compiledExpr
 		left:     c.compileExpression(v.Left),
 		right:    c.compileExpression(v.Right),
 		operator: v.Operator,
+	}
+	if v.ParenthesizedLeft {
+		r.right = &compiledUnnamedExpr{r.right}
 	}
 	r.init(c, v.Idx0())
 	return r
@@ -3320,6 +3336,12 @@ func (e *compiledClassLiteral) emitNamed(name unistring.String) {
 	e.emitGetter(true)
 }
 
+// compiledUnnamedExpr wraps an expression assigned to an identifier in parentheses, e.g. (a) = function() {}.
+// Such a target is not an IdentifierRef, so the expression is evaluated without being named after it.
+type compiledUnnamedExpr struct {
+	compiledExpr
+}
+
 func (c *compiler) emitPattern(pattern ast.Pattern, emitter func(target, init compiledExpr), putOnStack bool) {
 	switch pattern := pattern.(type) {
 	case *ast.ObjectPattern:
@@ -3361,15 +3383,21 @@ func (c *compiler) emitObjectPattern(pattern *ast.ObjectPattern, emitAssign func
 			c.emit(_toPropertyKey{})
 			var target ast.Expression
 			var initializer ast.Expression
+			parenthesized := false
 			if e, ok := prop.Value.(*ast.AssignExpression); ok {
 				target = e.Left
 				initializer = e.Right
+				parenthesized = e.ParenthesizedLeft
 			} else {
 				target = prop.Value
 			}
-			c.emitAssign(target, c.compilePatternInitExpr(func() {
+			init := c.compilePatternInitExpr(func() {
 				c.emit(getKey)
-			}, initializer, prop.Idx0()), emitAssign)
+			}, initializer, prop.Idx0())
+			if parenthesized {
+				init = &compiledUnnamedExpr{init}
+			}
+			c.emitAssign(target, init, emitAssign)
 		default:
 			c.throwSyntaxErrorf(int(prop.Idx0()-1), "Unsupported AssignmentProperty type: %T", prop)
 		}
@@ -3392,9 +3420,13 @@ func (c *compiler) emitArrayPattern(pattern *ast.ArrayPattern, emitAssign func(t
 		case nil:
 			c.emit(iterGetNextOrUndef{}, pop)
 		case *ast.AssignExpression:
-			c.emitAssign(elt.Left, c.compilePatternInitExpr(func() {
+			init := c.compilePatternInitExpr(func() {
 				c.emit(iterGetNextOrUndef{})
-			}, elt.Right, elt.Idx0()), emitAssign)
+			}, elt.Right, elt.Idx0())
+			if elt.ParenthesizedLeft {
+				init = &compiledUnnamedExpr{init}
+			}
+			c.emitAssign(elt.Left, init, emitAssign)
 		default:
 			c.emitAssign(elt, c.compileEmitterExpr(func() {
 				c.emit(iterGetNextOrUndef{})

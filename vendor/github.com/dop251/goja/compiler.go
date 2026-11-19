@@ -236,12 +236,12 @@ func (b *binding) emitInitPAtScope(scope *scope, pos int) {
 	}
 }
 
-func (b *binding) emitGetVar(callee bool) {
+func (b *binding) emitGetVar(callee bool, strict bool) {
 	b.markAccessPoint()
 	if b.isVar && !b.isArg {
-		b.scope.c.emit(&loadMixed{name: b.name, callee: callee})
+		b.scope.c.emit(&loadMixed{name: b.name, callee: callee, strict: strict})
 	} else {
-		b.scope.c.emit(&loadMixedLex{name: b.name, callee: callee})
+		b.scope.c.emit(&loadMixedLex{name: b.name, callee: callee, strict: strict})
 	}
 }
 
@@ -321,6 +321,7 @@ type block struct {
 	outer      *block
 	breaking   *block // set when the 'finally' block is an empty break statement sequence
 	needResult bool
+	async      bool // for-await loop
 }
 
 func (c *compiler) leaveScopeBlock(enter *enterBlock) {
@@ -480,27 +481,32 @@ func (s *scope) lookupName(name unistring.String) (binding *binding, noDynamics 
 	toStash := false
 	for curScope := s; ; curScope = curScope.outer {
 		if curScope.outer != nil {
-			if b, exists := curScope.boundNames[name]; exists {
-				if toStash && !b.inStash {
-					b.moveToStash()
-				}
-				binding = b
-				return
+			binding = curScope.boundNames[name]
+		}
+
+		if binding == nil && name == "arguments" && curScope.funcType != funcNone && curScope.funcType != funcArrow {
+			if curScope.funcType == funcClsInit {
+				s.c.throwSyntaxError(0, "'arguments' is not allowed in class field initializer or static initialization block")
 			}
-		} else {
+			if curScope.outer != nil {
+				curScope.argsNeeded = true
+				binding, _ = curScope.bindName(name)
+			}
+		}
+
+		if binding != nil {
+			if toStash && !binding.inStash {
+				binding.moveToStash()
+			}
+			return
+		}
+
+		if curScope.outer == nil {
 			noDynamics = false
 			return
 		}
 		if curScope.dynamic {
 			noDynamics = false
-		}
-		if name == "arguments" && curScope.funcType != funcNone && curScope.funcType != funcArrow {
-			if curScope.funcType == funcClsInit {
-				s.c.throwSyntaxError(0, "'arguments' is not allowed in class field initializer or static initialization block")
-			}
-			curScope.argsNeeded = true
-			binding, _ = curScope.bindName(name)
-			return
 		}
 		if curScope.isFunction() {
 			toStash = true
@@ -631,7 +637,7 @@ func (s *scope) finaliseVarAlloc(stackOffset int) (stashSize, stackSize int) {
 			for scope, aps := range b.accessPoints {
 				var level uint32
 				for sc := scope; sc != nil && sc != s; sc = sc.outer {
-					if sc.needStash || sc.isDynamic() {
+					if sc.hasStash() {
 						level++
 					}
 				}
@@ -701,6 +707,8 @@ func (s *scope) finaliseVarAlloc(stackOffset int) (stashSize, stackSize int) {
 							i.idx = idx
 						case *resolveMixed:
 							i.idx = idx
+						case *deleteVar:
+							i.level = uint8(level)
 						default:
 							s.c.assert(false, s.c.p.sourceOffset(pc), "Unsupported instruction for binding: %T", i)
 						}
@@ -721,7 +729,7 @@ func (s *scope) finaliseVarAlloc(stackOffset int) (stashSize, stackSize int) {
 			for scope, aps := range b.accessPoints {
 				var level int
 				for sc := scope; sc != nil && sc != s; sc = sc.outer {
-					if sc.needStash || sc.isDynamic() {
+					if sc.hasStash() {
 						level++
 					}
 				}
@@ -773,11 +781,13 @@ func (s *scope) finaliseVarAlloc(stackOffset int) (stashSize, stackSize int) {
 						case initStack:
 							*ap = initStack1(idx)
 						case *loadMixed:
-							*ap = &loadMixedStack1{name: i.name, idx: idx, level: uint8(level), callee: i.callee}
+							*ap = &loadMixedStack1{name: i.name, idx: idx, level: uint8(level), callee: i.callee, strict: i.strict}
 						case *loadMixedLex:
-							*ap = &loadMixedStack1Lex{name: i.name, idx: idx, level: uint8(level), callee: i.callee}
+							*ap = &loadMixedStack1Lex{name: i.name, idx: idx, level: uint8(level), callee: i.callee, strict: i.strict}
 						case *resolveMixed:
 							*ap = &resolveMixedStack1{typ: i.typ, name: i.name, idx: idx, level: uint8(level), strict: i.strict}
+						case *deleteVar:
+							i.level = uint8(level)
 						default:
 							s.c.assert(false, s.c.p.sourceOffset(pc), "Unsupported instruction for binding: %T", i)
 						}
@@ -803,11 +813,13 @@ func (s *scope) finaliseVarAlloc(stackOffset int) (stashSize, stackSize int) {
 						case initStackP:
 							*ap = initStackP(idx)
 						case *loadMixed:
-							*ap = &loadMixedStack{name: i.name, idx: idx, level: uint8(level), callee: i.callee}
+							*ap = &loadMixedStack{name: i.name, idx: idx, level: uint8(level), callee: i.callee, strict: i.strict}
 						case *loadMixedLex:
-							*ap = &loadMixedStackLex{name: i.name, idx: idx, level: uint8(level), callee: i.callee}
+							*ap = &loadMixedStackLex{name: i.name, idx: idx, level: uint8(level), callee: i.callee, strict: i.strict}
 						case *resolveMixed:
 							*ap = &resolveMixedStack{typ: i.typ, name: i.name, idx: idx, level: uint8(level), strict: i.strict}
+						case *deleteVar:
+							i.level = uint8(level)
 						default:
 							s.c.assert(false, s.c.p.sourceOffset(pc), "Unsupported instruction for binding: %T", i)
 						}
@@ -887,6 +899,13 @@ func (s *scope) isDynamic() bool {
 	return s.dynLookup || s.dynamic
 }
 
+// hasStash returns whether this scope creates its own stash at runtime (as opposed to
+// the stash of an outer scope being the current one). This must match the corresponding
+// enter instruction (see updateEnterBlock, enterFunc, enterFunc1 and enterFuncBody).
+func (s *scope) hasStash() bool {
+	return s.needStash || s.dynamic || s.dynLookup && len(s.bindings) > 0
+}
+
 func (s *scope) isFunction() bool {
 	return s.funcType != funcNone && !s.eval
 }
@@ -923,11 +942,6 @@ func (c *compiler) compile(in *ast.Program, strict, inGlobal bool, evalVm *vm) {
 	scope.strict = strict
 	ownVarScope := eval && strict
 	ownLexScope := !inGlobal || eval
-	if ownVarScope {
-		c.newBlockScope()
-		scope = c.scope
-		scope.variable = true
-	}
 	if eval && !inGlobal {
 		for s := evalVm.stash; s != nil; s = s.outer {
 			if ft := s.funcType; ft != funcNone && ft != funcArrow {
@@ -935,6 +949,11 @@ func (c *compiler) compile(in *ast.Program, strict, inGlobal bool, evalVm *vm) {
 				break
 			}
 		}
+	}
+	if ownVarScope {
+		c.newBlockScope()
+		scope = c.scope
+		scope.variable = true
 	}
 	funcs := c.extractFunctions(in.Body)
 	c.createFunctionBindings(funcs)

@@ -1,0 +1,18 @@
+version: "2"
+
+# No linters are configured here beyond the defaults -- that is intentional.
+# The std-error-handling exclusion preset was enabled by default in v1 and is
+# restored here, so unchecked Close calls on request and response bodies stay
+# exempt.
+#
+# internal/md4 is kept byte-for-byte identical to golang.org/x/crypto/md4 so it
+# can be diffed against, and re-synced from, upstream. It is not written to this
+# repository's lint standards (it trips errcheck on unchecked hash.Write calls,
+# which never return an error), and we would rather keep the copy faithful than
+# annotate it.
+linters:
+  exclusions:
+    presets:
+      - std-error-handling
+    paths:
+      - internal/md4

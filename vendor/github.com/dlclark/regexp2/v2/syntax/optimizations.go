@@ -11,42 +11,50 @@ type FindOptimizations struct {
 	rightToLeft  bool
 	asciiLookups [][]uint
 
-	FindMode                FindNextStartingPositionMode
-	LeadingAnchor           NodeType
-	TrailingAnchor          NodeType
-	MinRequiredLength       int
-	MaxPossibleLength       int
-	LeadingPrefix           string
-	LeadingPrefixes         []string
-	LeadingPrefixesRunes    [][]rune
+	FindMode             FindNextStartingPositionMode
+	LeadingAnchor        NodeType
+	TrailingAnchor       NodeType
+	MinRequiredLength    int
+	MaxPossibleLength    int
+	LeadingPrefix        string
+	LeadingPrefixRunes   []rune
+	LeadingPrefixASCII   bool
+	LeadingPrefixes      []string
+	LeadingPrefixesRunes [][]rune
 	//LeadingStrings    *helpers.StringSearchValues
 
-	FixedDistanceLiteral FixedDistanceLiteral
-	FixedDistanceSets    []FixedDistanceSet
-	LiteralAfterLoop     *LiteralAfterLoop
-	LandmarkChain        *RequiredLandmarkChain
+	FixedDistanceLiteral    FixedDistanceLiteral
+	FixedDistanceSets       []FixedDistanceSet
+	LiteralAfterLoop        *LiteralAfterLoop
+	LandmarkChain           *RequiredLandmarkChain
 	LeadingPrefixFirstRunes []rune
+	LeadingPrefixFirstASCII *[2]uint64
 }
 
 type LiteralAfterLoop struct {
 	String           string
+	StringRunes      []rune
+	StringASCII      bool
 	StringIgnoreCase bool
 	Char             rune
 	Chars            []rune
+	CharsASCII       *[2]uint64
 
 	LoopNode *RegexNode
 }
 
 type FixedDistanceSet struct {
-	Set      *CharSet
-	Chars    []rune
-	Negated  bool
-	Range    *SingleRange
-	Distance int
+	Set        *CharSet
+	Chars      []rune
+	CharsASCII *[2]uint64
+	Negated    bool
+	Range      *SingleRange
+	Distance   int
 }
 
 type FixedDistanceLiteral struct {
 	S        string
+	Runes    []rune
 	C        rune
 	Distance int
 }
@@ -58,16 +66,21 @@ type RequiredLandmarkChain struct {
 	// to recover the earliest plausible regex start position.
 	LeadingLoopSet *CharSet
 
+	// Anchors are the distinct zero-width assertions between the leading loop
+	// and the first landmark. The VM tests them where the first landmark's
+	// alternative starts.
+	Anchors []NodeType
+
 	// Landmarks must all be found, in slice order, for the chain prefilter to
-	// produce a candidate. Each landmark is satisfied by exactly one matching
-	// alternative; alternatives are tried independently by the runner.
+	// produce a candidate. Alternatives can overlap, so the runner uses bounds
+	// that hold for whichever alternative the VM uses.
 	Landmarks []RequiredLandmark
 }
 
 type RequiredLandmark struct {
-	// Alternatives describes the mutually exclusive shapes that can satisfy
-	// this single required landmark. A landmark matches when any one alternative
-	// matches at a position in the input.
+	// Alternatives describes the shapes that can satisfy this single required
+	// landmark. A landmark matches when any one alternative matches at a
+	// position in the input.
 	Alternatives []RequiredLandmarkAlternative
 }
 
@@ -85,9 +98,10 @@ type RequiredLandmarkAlternative struct {
 
 	// LeadingWhitespaceSet is the optional or required whitespace immediately
 	// before the core token. If RequireWhitespaceBefore is true, at least one
-	// rune from this set must precede the core. When this alternative is the
-	// first matched landmark, the runner may rewind over additional contiguous
-	// leading whitespace from this set before rewinding over LeadingLoopSet.
+	// rune from this set must precede the core. For the first landmark, the
+	// runner rewinds over contiguous runes from this set before rewinding over
+	// LeadingLoopSet, if this alternative's core starts at the found core or
+	// right after a run of this set from there.
 	LeadingWhitespaceSet *CharSet
 
 	// TrailingWhitespaceSet is the optional or required whitespace immediately
@@ -357,7 +371,65 @@ func newFindOptimizations(tree *RegexTree, opt ParseOptions) *FindOptimizations 
 		}
 	}
 
+	f.prepareSearchLiterals()
+	f.prepareSearchSets()
 	return f
+}
+
+// Decode and classify pattern-only search data before sharing the compiled regex.
+func (f *FindOptimizations) prepareSearchLiterals() {
+	switch f.FindMode {
+	case LeadingString_LeftToRight, LeadingString_OrdinalIgnoreCase_LeftToRight:
+		f.LeadingPrefixRunes = []rune(f.LeadingPrefix)
+		f.LeadingPrefixASCII = isASCIIText(f.LeadingPrefix)
+	case FixedDistanceString_LeftToRight:
+		f.FixedDistanceLiteral.Runes = []rune(f.FixedDistanceLiteral.S)
+	case LiteralAfterLoop_LeftToRight:
+		literal := f.LiteralAfterLoop
+		if literal.String != "" {
+			literal.StringRunes = []rune(literal.String)
+			literal.StringASCII = isASCIIText(literal.String)
+		}
+	}
+}
+
+// Small searches keep their direct comparisons; larger ASCII needles share
+// a membership mask across every resumed search. General Unicode needles
+// retain the rune list. Large character classes already have their own bitmap.
+func (f *FindOptimizations) prepareSearchSets() {
+	f.LeadingPrefixFirstASCII = asciiSearchMask(f.LeadingPrefixFirstRunes)
+	for i := range f.FixedDistanceSets {
+		set := &f.FixedDistanceSets[i]
+		if len(set.Chars) <= 5 {
+			set.CharsASCII = asciiSearchMask(set.Chars)
+		}
+	}
+	if f.LiteralAfterLoop != nil {
+		f.LiteralAfterLoop.CharsASCII = asciiSearchMask(f.LiteralAfterLoop.Chars)
+	}
+}
+
+func asciiSearchMask(chars []rune) *[2]uint64 {
+	if len(chars) <= 3 {
+		return nil
+	}
+	var mask [2]uint64
+	for _, ch := range chars {
+		if uint32(ch) >= 128 {
+			return nil
+		}
+		mask[ch>>6] |= 1 << (uint(ch) & 63)
+	}
+	return &mask
+}
+
+func isASCIIText(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 128 {
+			return false
+		}
+	}
+	return true
 }
 
 func newFindOptimizationsForNode(root *RegexNode, opt ParseOptions, isLeadingPartial bool) *FindOptimizations {
@@ -461,9 +533,16 @@ func newFindOptimizationsForNode(root *RegexNode, opt ParseOptions, isLeadingPar
 
 	// We're now left-to-right only and looking for multiple prefixes and/or sets.
 
-	// If there are multiple leading strings, we can search for any of them.
-	// this works in the interpreter, but we avoid it due to additional cost during construction
-
+	// Multiple leading strings let the finder jump between candidate prefixes.
+	// Case-sensitive prefixes are cheap to collect and help the interpreter.
+	// Case-insensitive prefix explosion is still limited to code generation.
+	if prefixes := findPrefixes(root, false); len(prefixes) > 1 {
+		f.LeadingPrefixes = prefixes
+		f.LeadingPrefixesRunes = toRunePrefixes(prefixes)
+		f.LeadingPrefixFirstRunes = leadingPrefixFirstRunes(f.LeadingPrefixesRunes)
+		f.FindMode = LeadingStrings_LeftToRight
+		return f
+	}
 	if !interpreter {
 		ciPrefixes := findPrefixes(root, true)
 		if len(ciPrefixes) > 1 {
@@ -471,10 +550,6 @@ func newFindOptimizationsForNode(root *RegexNode, opt ParseOptions, isLeadingPar
 			f.LeadingPrefixesRunes = toRunePrefixes(ciPrefixes)
 			f.LeadingPrefixFirstRunes = leadingPrefixFirstRunes(f.LeadingPrefixesRunes)
 			f.FindMode = LeadingStrings_OrdinalIgnoreCase_LeftToRight
-			/*SYSTEM_TEXT_REGULAREXPRESSIONS
-			if usesRfoTryFind {
-						f.LeadingStrings = helpers.NewSearchValues(f.LeadingPrefixes, true)
-			}*/
 			return f
 		}
 	}
@@ -516,20 +591,6 @@ func newFindOptimizationsForNode(root *RegexNode, opt ParseOptions, isLeadingPar
 		// Sort the sets by "quality", such that whatever set is first is the one deemed most efficient to use.
 		// In some searches, we may use multiple sets, so we want the subsequent ones to also be the efficiency runners-up.
 		slices.SortFunc(fixedDistanceSets, compareFixedDistanceSetsByQuality)
-
-		// If the best fixed-distance set is composed of high-frequency characters, IndexOfAny on
-		// those characters is likely to match too many positions. Prefer a case-sensitive
-		// multi-prefix search when one is available.
-		if !interpreter && !mayContainCaseInsensitiveMatching(root) && hasHighFrequencyChars(fixedDistanceSets[0]) {
-			caseSensitivePrefixes := findPrefixes(root, false)
-			if len(caseSensitivePrefixes) > 1 {
-				f.LeadingPrefixes = caseSensitivePrefixes
-				f.LeadingPrefixesRunes = toRunePrefixes(caseSensitivePrefixes)
-				f.LeadingPrefixFirstRunes = leadingPrefixFirstRunes(f.LeadingPrefixesRunes)
-				f.FindMode = LeadingStrings_LeftToRight
-				return f
-			}
-		}
 
 		// If there is no literal after the loop, use whatever set we got.
 		// If there is a literal after the loop, consider it to be better than a negated set and better than a set with many characters.

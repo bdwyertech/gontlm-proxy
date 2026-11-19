@@ -12,7 +12,7 @@ import (
 	"crypto/md5"
 	"strings"
 
-	"golang.org/x/crypto/md4" //nolint: staticcheck
+	"github.com/launchdarkly/go-ntlmssp/internal/md4" //nolint: staticcheck // MD4 is required by the NTLM protocol.
 )
 
 func getNtlmV2Hash(password, username, target string) []byte {

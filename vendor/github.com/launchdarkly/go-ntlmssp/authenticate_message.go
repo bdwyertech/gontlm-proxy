@@ -36,7 +36,7 @@ type authenticateMessageFields struct {
 
 func (m authenicateMessage) MarshalBinary() ([]byte, error) {
 	if !m.NegotiateFlags.Has(negotiateFlagNTLMSSPNEGOTIATEUNICODE) {
-		return nil, errors.New("Only unicode is supported")
+		return nil, errors.New("only unicode is supported")
 	}
 
 	target, user := toUnicode(m.TargetName), toUnicode(m.UserName)
@@ -82,7 +82,7 @@ func (m authenicateMessage) MarshalBinary() ([]byte, error) {
 // that was received from the server
 func ProcessChallenge(challengeMessageData []byte, user, password string) ([]byte, error) {
 	if user == "" && password == "" {
-		return nil, errors.New("Anonymous authentication not supported")
+		return nil, errors.New("anonymous authentication not supported")
 	}
 
 	var cm challengeMessage
@@ -91,10 +91,10 @@ func ProcessChallenge(challengeMessageData []byte, user, password string) ([]byt
 	}
 
 	if cm.NegotiateFlags.Has(negotiateFlagNTLMSSPNEGOTIATELMKEY) {
-		return nil, errors.New("Only NTLM v2 is supported, but server requested v1 (NTLMSSP_NEGOTIATE_LM_KEY)")
+		return nil, errors.New("only NTLM v2 is supported, but server requested v1 (NTLMSSP_NEGOTIATE_LM_KEY)")
 	}
 	if cm.NegotiateFlags.Has(negotiateFlagNTLMSSPNEGOTIATEKEYEXCH) {
-		return nil, errors.New("Key exchange requested but not supported (NTLMSSP_NEGOTIATE_KEY_EXCH)")
+		return nil, errors.New("key exchange requested but not supported (NTLMSSP_NEGOTIATE_KEY_EXCH)")
 	}
 
 	am := authenicateMessage{

@@ -36,6 +36,8 @@ func (self *_parser) parseStatementList() (list []ast.Statement) {
 }
 
 func (self *_parser) parseStatement() ast.Statement {
+	self.enterNesting()
+	defer self.leaveNesting()
 
 	if self.token == token.EOF {
 		self.errorUnexpectedToken(self.token)
@@ -279,19 +281,21 @@ func (self *_parser) parseArrowFunctionBody(async bool) (ast.ConciseBody, []*ast
 	if self.token == token.LEFT_BRACE {
 		return self.parseFunctionBlock(async, async, false)
 	}
-	if async != self.scope.inAsync || async != self.scope.allowAwait {
-		inAsync := self.scope.inAsync
-		allowAwait := self.scope.allowAwait
-		self.scope.inAsync = async
-		self.scope.allowAwait = async
-		allowYield := self.scope.allowYield
-		self.scope.allowYield = false
-		defer func() {
-			self.scope.inAsync = inAsync
-			self.scope.allowAwait = allowAwait
-			self.scope.allowYield = allowYield
-		}()
-	}
+
+	inAsync := self.scope.inAsync
+	allowAwait := self.scope.allowAwait
+	allowYield := self.scope.allowYield
+	inFuncParams := self.scope.inFuncParams
+	self.scope.inAsync = async
+	self.scope.allowAwait = async
+	self.scope.allowYield = false
+	self.scope.inFuncParams = false
+	defer func() {
+		self.scope.inAsync = inAsync
+		self.scope.allowAwait = allowAwait
+		self.scope.allowYield = allowYield
+		self.scope.inFuncParams = inFuncParams
+	}()
 
 	return &ast.ExpressionBody{
 		Expression: self.parseAssignmentExpression(),
@@ -299,6 +303,8 @@ func (self *_parser) parseArrowFunctionBody(async bool) (ast.ConciseBody, []*ast
 }
 
 func (self *_parser) parseClass(declaration bool) *ast.ClassLiteral {
+	self.enterNesting()
+	defer self.leaveNesting()
 	if declaration && !self.scope.allowLet && self.token == token.CLASS {
 		self.errorUnexpectedToken(token.CLASS)
 	}
@@ -355,7 +361,8 @@ func (self *_parser) parseClass(declaration bool) *ast.ClassLiteral {
 		var async bool
 		methodBodyStart := self.idx
 		if self.literal == "get" || self.literal == "set" {
-			if tok := self.peek(); tok != token.SEMICOLON && tok != token.LEFT_PARENTHESIS {
+			if tok := self.peek(); tok == token.LEFT_BRACKET || tok == token.STRING ||
+				tok == token.NUMBER || tok == token.PRIVATE_IDENTIFIER || token.IsId(tok) {
 				if self.literal == "get" {
 					kind = ast.PropertyKindGet
 				} else {
@@ -364,7 +371,8 @@ func (self *_parser) parseClass(declaration bool) *ast.ClassLiteral {
 				self.next()
 			}
 		} else if self.token == token.ASYNC {
-			if tok := self.peek(); tok != token.SEMICOLON && tok != token.LEFT_PARENTHESIS {
+			if tok := self.peek(); tok == token.LEFT_BRACKET || tok == token.STRING ||
+				tok == token.NUMBER || tok == token.PRIVATE_IDENTIFIER || tok == token.MULTIPLY || token.IsId(tok) {
 				async = true
 				kind = ast.PropertyKindMethod
 				self.next()
@@ -655,6 +663,10 @@ func (self *_parser) parseFor(idx file.Idx, initializer ast.ForLoopInitializer) 
 
 func (self *_parser) parseForOrForInStatement() ast.Statement {
 	idx := self.expect(token.FOR)
+	forAwait := self.token == token.AWAIT && self.scope.inAsync
+	if forAwait {
+		self.next()
+	}
 	self.expect(token.LEFT_PARENTHESIS)
 
 	var initializer ast.ForLoopInitializer
@@ -694,7 +706,10 @@ func (self *_parser) parseForOrForInStatement() ast.Statement {
 			}
 			if forIn || forOf {
 				if list[0].Initializer != nil {
-					self.error(list[0].Initializer.Idx0(), "for-in loop variable declaration may not have an initializer")
+					// for (var x = ... in ...) is allowed in non-strict code (B.3.5), strict mode is checked by the compiler
+					if _, ok := list[0].Target.(*ast.Identifier); !ok || !forIn || tok != token.VAR {
+						self.error(list[0].Initializer.Idx0(), "for-in loop variable declaration may not have an initializer")
+					}
 				}
 				if tok == token.VAR {
 					into = &ast.ForIntoVar{
@@ -724,7 +739,22 @@ func (self *_parser) parseForOrForInStatement() ast.Statement {
 				}
 			}
 		} else {
-			expr := self.parseExpression()
+			var expr ast.Expression
+			if forAwait && self.token == token.ASYNC {
+				// 'async of' is only a valid for-of head in for-await
+				var state parserState
+				self.mark(&state)
+				id := &ast.Identifier{Name: "async", Idx: self.idx}
+				self.next()
+				if self.token == token.IDENTIFIER && self.literal == "of" {
+					expr = id
+				} else {
+					self.restore(&state)
+				}
+			}
+			if expr == nil {
+				expr = self.parseExpression()
+			}
 			if self.token == token.IN {
 				self.next()
 				forIn = true
@@ -757,11 +787,16 @@ func (self *_parser) parseForOrForInStatement() ast.Statement {
 		self.scope.allowIn = allowIn
 	}
 
+	if forAwait && !forOf {
+		self.error(idx, "for await is only valid with for-of")
+	}
 	if forIn {
 		return self.parseForIn(idx, into)
 	}
 	if forOf {
-		return self.parseForOf(idx, into)
+		node := self.parseForOf(idx, into)
+		node.Await = forAwait
+		return node
 	}
 
 	self.expect(token.SEMICOLON)
@@ -851,9 +886,10 @@ func (self *_parser) parseWhileStatement() ast.Statement {
 }
 
 func (self *_parser) parseIfStatement() ast.Statement {
-	self.expect(token.IF)
+	idx := self.expect(token.IF)
 	self.expect(token.LEFT_PARENTHESIS)
 	node := &ast.IfStatement{
+		If:   idx,
 		Test: self.parseExpression(),
 	}
 	self.expect(token.RIGHT_PARENTHESIS)
@@ -941,7 +977,6 @@ func (self *_parser) parseSourceMap() *sourcemap.Consumer {
 		}
 
 		if err != nil {
-			self.error(file.Idx(0), "Could not load source map: %v", err)
 			return nil
 		}
 		if data == nil {
@@ -951,7 +986,7 @@ func (self *_parser) parseSourceMap() *sourcemap.Consumer {
 		if sm, err := sourcemap.Parse(self.file.Name(), data); err == nil {
 			return sm
 		} else {
-			self.error(file.Idx(0), "Could not parse source map: %v", err)
+			return nil
 		}
 	}
 	return nil
